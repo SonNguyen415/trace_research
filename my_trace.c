@@ -14,7 +14,6 @@ void trace_event(const char * format, int event_type, int a, int b, int c, \
     int ptr = trace_buffer.write_ptr;
 
     // This should be in atomic instruction
-    // Shouldn't all of it need to be in atomic instruction? CAS seems inadequate for this
     trace_buffer.traces[ptr].format = format;
     trace_buffer.traces[ptr].event_type = event_type;
     trace_buffer.write_ptr = (ptr + 1) % MAX_EVENTS;
