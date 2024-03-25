@@ -25,6 +25,7 @@ struct t_event_b {
 };
 
 
+
 // Tracer structure, storing arguments as variables
 struct trace {
     union {
@@ -32,22 +33,27 @@ struct trace {
         struct t_event_b event_b;
     };
     
+    
     // Some other variables for timestamp and stuff that all events should store
     const char * format;
     int event_type;
 };
 
+
+
 void trace_init();
 
-
 // Function to add an event to the trace infrastructure
-// This is horrible. This is hard coded. I hate it
-int trace_event(const char * format, int event_type, int a, int b, int c, \
+inline int trace_event(const char * format, int event_type, int a, int b, int c, \
                         int d, int e, int f, int g, int h, int i, int j);
 
 
 // Function to output trace buffer
 int output_trace();
 
+double get_rdtsc();
+
+#define TRACE_EVENT(format, event_type, a, b, c, d, e, f, g, h, i, j) \
+    trace_event(format, event_type, a, b, c, d, e, f, g, h, i, j)
 
 #endif
