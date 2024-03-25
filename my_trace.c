@@ -8,18 +8,19 @@ struct t_trace_buffer {
 
 CK_RING_PROTOTYPE(trace_buffer, trace);
 
-void trace_init() {
+void trace_init() 
+{
     ck_ring_init(&trace_buffer.my_ring, MAX_EVENTS);
 }
 
 // This is horrible. This is hard coded. I hate it
 int trace_event(const char * format, int event_type, int a, int b, int c, \
                         int d, int e, int f, int g, int h, int i, int j) 
-{
+{;
+
     // Get the write ptr
     struct trace new_trace;
     bool res = true;
-
 
     new_trace.format = format;
     new_trace.event_type = event_type;
@@ -39,9 +40,12 @@ int trace_event(const char * format, int event_type, int a, int b, int c, \
 
     // Enqueue into the ring buffer
     res = CK_RING_ENQUEUE_MPSC(trace_buffer, &trace_buffer.my_ring, trace_buffer.traces, &new_trace);
+    
     if(!res) {
+        printf("Here\n");
         return -1;
     }
+
     return 0;
 }
 
@@ -49,6 +53,7 @@ int trace_event(const char * format, int event_type, int a, int b, int c, \
 // Start from current write ptr, we read the entire buffer
 int output_trace() 
 {
+    
     struct trace cur_trace;
     bool res = true;
     int num_events = ck_ring_size(&trace_buffer.my_ring);
@@ -72,7 +77,7 @@ int output_trace()
             }
             
         }
-        return 0;
+        
     }
-    return -1;
+    return 0;
 }

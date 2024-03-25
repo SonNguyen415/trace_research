@@ -2,17 +2,20 @@
 #include "my_trace.h"
 
 void test1() {
+    trace_init();
+
     char * new_format = "Event A: %d\n";
     for(int i=0; i<10; i++) {
-        if(trace_event(new_format, EVENT_A, 5, 2, 0 , 0, 0, 0, 0, 0, 0, 0) < 0) {
+        int res = trace_event(new_format, EVENT_A, 5, 0, 0 , 0, 0, 0, 0, 0, 0, 0);
+        if(res < 0) {
             printf("Enqueue Error\n");
-        }
+        } 
     }
 
-    // new_format = "Event B: %d, %d\n";
-    // for(int i=0; i<10; i++) {
-    //     trace_event(new_format, EVENT_B, 4, 11, 0, 0, 0, 0, 0, 0, 0, 0);
-    // } 
+    new_format = "Event B: %d, %d\n";
+    for(int i=0; i<10; i++) {
+        trace_event(new_format, EVENT_B, 4, 11, 0, 0, 0, 0, 0, 0, 0, 0);
+    } 
 
     if(output_trace() < 0) {
         printf("Dequeue error or Empty ring\n");
