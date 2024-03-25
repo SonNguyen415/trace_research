@@ -2,45 +2,64 @@
 
 struct t_trace_buffer {
     struct trace traces[MAX_EVENTS];
-    int read_ptr;
-    int write_ptr;
+    struct ck_ring my_ring;
 } trace_buffer;
 
+
+CK_RING_PROTOTYPE(trace_buffer, trace);
+
+void trace_init() {
+    ck_ring_init(&trace_buffer.my_ring, MAX_EVENTS);
+}
+
 // This is horrible. This is hard coded. I hate it
-void trace_event(const char * format, int event_type, int a, int b, int c, \
+int trace_event(const char * format, int event_type, int a, int b, int c, \
                         int d, int e, int f, int g, int h, int i, int j) 
 {
     // Get the write ptr
-    int ptr = trace_buffer.write_ptr;
+    struct trace new_trace;
+    bool res = true;
 
-    // This should be in atomic instruction
-    trace_buffer.traces[ptr].format = format;
-    trace_buffer.traces[ptr].event_type = event_type;
-    trace_buffer.write_ptr = (ptr + 1) % MAX_EVENTS;
+
+    new_trace.format = format;
+    new_trace.event_type = event_type;
     
     // Add arguments to the trace structure based on event type
     switch(event_type)  {
         case EVENT_A:
-            trace_buffer.traces[ptr].event_a.a = a;
+            new_trace.event_a.a = a;
             break;
 
         case EVENT_B:
-            trace_buffer.traces[ptr].event_b.a = a;
-            trace_buffer.traces[ptr].event_b.b = b;
+            new_trace.event_b.a = a;
+            new_trace.event_b.b = b;
             break;
     }
 
+
+    // Enqueue into the ring buffer
+    res = CK_RING_ENQUEUE_MPSC(trace_buffer, &trace_buffer.my_ring, trace_buffer.traces, &new_trace);
+    if(!res) {
+        return -1;
+    }
+    return 0;
 }
 
 
 // Start from current write ptr, we read the entire buffer
-void output_trace() 
+int output_trace() 
 {
-    trace_buffer.read_ptr = trace_buffer.write_ptr;
-    int idx = trace_buffer.read_ptr;
+    struct trace cur_trace;
+    bool res = true;
+    int num_events = ck_ring_size(&trace_buffer.my_ring);
 
-    for(int i=0; i < MAX_EVENTS; i++) {
-        struct trace cur_trace = trace_buffer.traces[idx];
+    for(int i=0; i < num_events; i++) {
+        res = CK_RING_DEQUEUE_MPSC(trace_buffer, &trace_buffer.my_ring, trace_buffer.traces, &cur_trace);
+       
+        if(!res) {
+            return -1;
+        } 
+            
         if(cur_trace.format != NULL) {
             switch(cur_trace.event_type) {
                 case EVENT_A:
@@ -53,6 +72,7 @@ void output_trace()
             }
             
         }
-        idx = (idx + 1) % MAX_EVENTS;
+        return 0;
     }
+    return -1;
 }

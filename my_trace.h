@@ -3,8 +3,9 @@
 
 #include <string.h>
 #include <stdio.h>
+#include <ck_ring.h>
 
-#define MAX_EVENTS 100
+#define MAX_EVENTS 64
 #define MAX_ARGS 10
 
 
@@ -36,15 +37,17 @@ struct trace {
     int event_type;
 };
 
+void trace_init();
 
 
 // Function to add an event to the trace infrastructure
 // This is horrible. This is hard coded. I hate it
-void trace_event(const char * format, int event_type, int a, int b, int c, \
+int trace_event(const char * format, int event_type, int a, int b, int c, \
                         int d, int e, int f, int g, int h, int i, int j);
 
 
 // Function to output trace buffer
-void output_trace();
+int output_trace();
+
 
 #endif

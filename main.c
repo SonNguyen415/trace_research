@@ -4,15 +4,20 @@
 void test1() {
     char * new_format = "Event A: %d\n";
     for(int i=0; i<10; i++) {
-        trace_event(new_format, EVENT_A, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        if(trace_event(new_format, EVENT_A, 5, 2, 0 , 0, 0, 0, 0, 0, 0, 0) < 0) {
+            printf("Enqueue Error\n");
+        }
     }
 
-    new_format = "Event B: %d, %d\n";
-    for(int i=0; i<10; i++) {
-        trace_event(new_format, EVENT_B, 4, 11, 0, 0, 0, 0, 0, 0, 0, 0);
+    // new_format = "Event B: %d, %d\n";
+    // for(int i=0; i<10; i++) {
+    //     trace_event(new_format, EVENT_B, 4, 11, 0, 0, 0, 0, 0, 0, 0, 0);
+    // } 
+
+    if(output_trace() < 0) {
+        printf("Dequeue error or Empty ring\n");
     }
     
-    output_trace();
 }
 
 
@@ -21,6 +26,7 @@ void test2() {
 }
 
 int main() {    
+
 
 
     // Tests:
