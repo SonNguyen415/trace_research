@@ -58,14 +58,8 @@ void test3() {
     res = trace_event(new_format, EVENT_A, 4, 0, 0 , 0, 0, 0, 0, 0, 0, 0);
     printf("Return: %d\n", res);
 
-    for(int j=0; j<MAX_EVENTS; j++) {
-       
-    }
-
-
     printf("Test 3 -- Passed\n");
 }
-
 
 
 // Performance calculation
@@ -106,10 +100,7 @@ void test5(double rdtsc_cost) {
 
 
 int main() {  
-  
-    
     // Tests:
-
     if(TEST_ENTRY) {
         // 1. Basic test for entering event and output them
         test1();
