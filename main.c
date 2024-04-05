@@ -43,7 +43,7 @@ void test1() {
 
     char * new_format = "Event A: %d\n";
     for(int i=0; i<10; i++) {
-        int res = trace_event(new_format, EVENT_A, 5, 0, 0 , 0, 0, 0, 0, 0, 0, 0);
+        int res = trace_event(new_format, 1, 5, 0, 0 , 0, 0, 0, 0, 0, 0, 0);
         assert(res);
     }
 
@@ -57,18 +57,17 @@ void test2() {
 
     char * new_format = "Event A: %d\n";
     for(int i=0; i<4; i++) {
-        int res = trace_event(new_format, EVENT_A, 5, 0, 0 , 0, 0, 0, 0, 0, 0, 0);
+        int res = trace_event(new_format, 1, 5, 0, 0 , 0, 0, 0, 0, 0, 0, 0);
         assert(res);
     }
 
     new_format = "Event B: a: %d | b: %d\n";
     for(int i=0; i<2; i++) {
-        int res = trace_event(new_format, EVENT_B, 5, 1, 0 , 0, 0, 0, 0, 0, 0, 0);
+        int res = trace_event(new_format, 2, 5, 1, 0 , 0, 0, 0, 0, 0, 0, 0);
         assert(res);
     }
 
     printf("Test 2 -- Passed\n");
-
 }
 
 // Enqueue over-max events. Overwrite??
@@ -81,11 +80,11 @@ void test3() {
     char * new_format = "Event A: %d\n";
     int res = -1;
     for(int i=0; i<MAX_EVENTS-1; i++) {
-        res = trace_event(new_format, EVENT_A, 5, 0, 0 , 0, 0, 0, 0, 0, 0, 0);
+        res = trace_event(new_format, 1, 5, 0, 0 , 0, 0, 0, 0, 0, 0, 0);
         assert(res >= 0);
     }
 
-    res = trace_event(new_format, EVENT_A, 4, 0, 0 , 0, 0, 0, 0, 0, 0, 0);
+    res = trace_event(new_format, 1, 4, 0, 0 , 0, 0, 0, 0, 0, 0, 0);
     printf("Return: %d\n", res);
 
     printf("Test 3 -- Passed\n");
@@ -112,7 +111,7 @@ void test4(double rdtsc_cost) {
         trace_init();
         for(int j=0; j<NENQUEUE; j++) {
             time_start = RDTSCP();
-            bool res = TRACE_EVENT(new_format, EVENT_A, 5, 0, 0 , 0, 0, 0, 0, 0, 0, 0);
+            bool res = TRACE_EVENT(new_format, 1, 5, 0, 0 , 0, 0, 0, 0, 0, 0, 0);
             time_end = RDTSCP();
             assert(res);
 
