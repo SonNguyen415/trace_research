@@ -3,38 +3,30 @@
 // #include <sys/types.h>
 #include <pthread.h>
 #include <stdlib.h>
-#include "trace2.h"
+#include "trace1.h"
 
 #define TEST_ENTRY false
 #define TEST_PERFORMANCE true
 
 // These are for the performance test
 
-#define NWRITERS 16
-#define NENQUEUE (MAX_EVENTS / 4)
+#define NWRITERS 8
+#define NENQUEUE 4096
 #define NTRIALS 1024
 #define OUTLIER_THRESHOLD 1024
 
 
-static inline uint32_t rdtsc(void) 
-{
-    uint32_t a = 0;
-    asm volatile("rdtscp": "=a"(a):: "edx");
-    return a;
-}
-
-
 // Get the cost of rdtsc, this is done across 1,000,000 trials
 // @return the average time rdtsc takes
-double get_rdtsc() {
+double get_rdtscp() {
     uint32_t start_time, end_time;
     int time_elapsed, trials = 1000000;
     double avg_time, total_time = 0;
 
 
     for(int i=0; i<trials; i++) {
-        start_time = rdtsc();
-        end_time = rdtsc();
+        start_time = RDTSCP();
+        end_time = RDTSCP();
         time_elapsed = end_time - start_time;
         total_time += time_elapsed;
     }
@@ -108,15 +100,26 @@ void test4(double rdtsc_cost) {
     int time_start,time_end, time_elapsed;
     int count = 0;
 
-    for(int j=0; j < NTRIALS; j++) {
+    // Create a CSV file to write to
+    // FILE *fpt;
+    // fpt = fopen("SingleWriter.csv", "w+");
+
+    // // Headers for csv
+    // fprintf(fpt,"Trial, Enqueue, Time Elapsed\n");
+
+    for(int i=0; i < NTRIALS; i++) {
         trace_init();
-        for(int i=0; i<NENQUEUE; i++) {
-            time_start = rdtsc();
+        for(int j=0; j<NENQUEUE; j++) {
+            time_start = RDTSCP();
             int res = TRACE_EVENT(new_format, EVENT_A, 5, 0, 0 , 0, 0, 0, 0, 0, 0, 0);
-            time_end = rdtsc();
+            time_end = RDTSCP();
             assert(res);
 
             time_elapsed = time_end-time_start;
+
+            
+            // fprintf(fpt,"%d, %d, %d\n", i, j, time_elapsed);
+
             if(time_elapsed > OUTLIER_THRESHOLD) {
                 count++;
             } else {
@@ -124,19 +127,92 @@ void test4(double rdtsc_cost) {
             }
         }
     }
+
+    // fclose(fpt);
     
     
     avg_time = total_time / (NTRIALS*NENQUEUE);
     printf("Average time taken: %.3f\n", avg_time);
-    printf("Accounting for RDTSC: %.3f\n", avg_time-rdtsc_cost);
+    printf("Accounting for RDTSCP: %.3f\n", avg_time-rdtsc_cost);
     printf("Count Outliers: %d out of %d\n", count, (NTRIALS*NENQUEUE));
+    printf("Test 4 Completed\n");
 }
 
+
+void * thread_trace(void * arg) {
+    int thd_id = *((int *)arg);
+    int time_start, time_end;
+
+    // Set up average time for returning later from thread
+    double * avg_time = (double *)malloc(sizeof(double));
+    if(avg_time == NULL) {
+        fprintf(stderr, "Malloc Error in Thread: %d.\n", thd_id);
+        pthread_exit(NULL);
+    }
+    *avg_time = 0;
+
+    char * new_format = "Event A: %d\n";
+
+    // Enqueue to the ring buffer NENQUEUE times
+    for(int i=0; i<NENQUEUE; i++) {
+        time_start = RDTSCP();
+        int res = TRACE_EVENT(new_format, EVENT_A, 5, 0, 0 , 0, 0, 0, 0, 0, 0, 0);
+        time_end = RDTSCP();
+
+        *avg_time += time_end - time_start;
+        assert(res);
+    }
+
+    *avg_time = *avg_time / NENQUEUE;
+    
+    pthread_exit(avg_time);
+    return avg_time;
+}
 
 
 // Performance calculation
 void test5(double rdtsc_cost) {
-    printf("Test 5: Performance Test for a multiple writers\n");   
+    printf("Test 5: Performance Test for multiple writers\n");   
+
+    pthread_t writers[NWRITERS];
+    int th_results[NWRITERS];
+    int i,j;
+    double avg_time = 0;
+
+   // Make the threads
+    for(i=0; i < NTRIALS; i++) {
+        trace_init();
+
+        // Create the threads
+        for(j=0; j < NWRITERS; j++) {
+            if(pthread_create(&writers[j], NULL, thread_trace, &j) != 0) {
+                fprintf(stderr, "Error creating thread %d.\n", j);
+            }
+        }
+
+        // Wait for threads to finish
+        for(j=0; j < NWRITERS; j++) {
+            double * thd_result;
+            if(pthread_join(writers[j], (void**)&thd_result) != 0) {
+                fprintf(stderr, "Error joining thread %d.\n", j);
+            }
+            th_results[j] = *thd_result;
+            free(thd_result);
+        }
+        
+
+        // Aggregate average value
+        for(j=0; j < NWRITERS; j++) {
+            avg_time += th_results[j];
+        }
+
+    }
+
+    avg_time = avg_time / (NTRIALS*NWRITERS);
+    
+    printf("Average time taken: %.3f\n", avg_time);
+    printf("Accounting for RDTSCP: %.3f\n", avg_time-rdtsc_cost);
+    printf("Test 5 Completed\n");
 
 }
 
@@ -161,7 +237,7 @@ int main() {
   
 
     if(TEST_PERFORMANCE) {
-        double rdtsc_cost = get_rdtsc();
+        double rdtsc_cost = get_rdtscp();
         printf("RDTSCP Cost: %0.3f\n", rdtsc_cost); 
         printf("----------------------------------------------\n"); 
 

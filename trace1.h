@@ -111,8 +111,18 @@ bool output_trace()
 }
 
 
+static inline uint32_t rdtscp(void) 
+{
+    uint32_t a = 0;
+    asm volatile("rdtscp": "=a"(a):: "edx");
+    return a;
+}
+
+
 #define TRACE_EVENT(format, num_args, a, b, c, d, e, f, g, h, i, j) \
     trace_event(format, num_args, a, b, c, d, e, f, g, h, i, j)
 
+
+#define RDTSCP(void) rdtscp(void)
 
 #endif
