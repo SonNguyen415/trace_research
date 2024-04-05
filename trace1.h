@@ -9,11 +9,6 @@
 #define MAX_EVENTS 1048576
 #define MAX_ARGS 10
 
-// Define event types
-#define EVENT_A 1
-#define EVENT_B 2
-
-
 // Trace structure
 struct t_event {
     int args[MAX_ARGS];

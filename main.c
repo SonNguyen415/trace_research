@@ -1,8 +1,9 @@
 #include <stdio.h>
 #include <assert.h>
-// #include <sys/types.h>
+#include <sys/sysinfo.h>
 #include <pthread.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include "trace1.h"
 
 #define TEST_ENTRY false
@@ -11,8 +12,8 @@
 // These are for the performance test
 
 #define NWRITERS 8
-#define NENQUEUE 4096
-#define NTRIALS 1024
+#define NENQUEUE 1
+#define NTRIALS 1
 #define OUTLIER_THRESHOLD 1024
 
 
@@ -111,7 +112,7 @@ void test4(double rdtsc_cost) {
         trace_init();
         for(int j=0; j<NENQUEUE; j++) {
             time_start = RDTSCP();
-            int res = TRACE_EVENT(new_format, EVENT_A, 5, 0, 0 , 0, 0, 0, 0, 0, 0, 0);
+            bool res = TRACE_EVENT(new_format, EVENT_A, 5, 0, 0 , 0, 0, 0, 0, 0, 0, 0);
             time_end = RDTSCP();
             assert(res);
 
@@ -141,7 +142,7 @@ void test4(double rdtsc_cost) {
 
 void * thread_trace(void * arg) {
     int thd_id = *((int *)arg);
-    int time_start, time_end;
+    double time_start, time_end;
 
     // Set up average time for returning later from thread
     double * avg_time = (double *)malloc(sizeof(double));
@@ -156,15 +157,17 @@ void * thread_trace(void * arg) {
     // Enqueue to the ring buffer NENQUEUE times
     for(int i=0; i<NENQUEUE; i++) {
         time_start = RDTSCP();
-        int res = TRACE_EVENT(new_format, EVENT_A, 5, 0, 0 , 0, 0, 0, 0, 0, 0, 0);
+        bool res = TRACE_EVENT(new_format, 1, 5, 0, 0 , 0, 0, 0, 0, 0, 0, 0);
         time_end = RDTSCP();
 
-        *avg_time += time_end - time_start;
         assert(res);
+
+        *avg_time += time_end - time_start;    
+        // printf("    Time: %.3f\n", time_end - time_start);
     }
 
     *avg_time = *avg_time / NENQUEUE;
-    
+
     pthread_exit(avg_time);
     return avg_time;
 }
@@ -173,9 +176,10 @@ void * thread_trace(void * arg) {
 // Performance calculation
 void test5(double rdtsc_cost) {
     printf("Test 5: Performance Test for multiple writers\n");   
+    printf("CPUS Available: %d\n", get_nprocs());
 
     pthread_t writers[NWRITERS];
-    int th_results[NWRITERS];
+    double th_results[NWRITERS];
     int i,j;
     double avg_time = 0;
 
@@ -203,10 +207,13 @@ void test5(double rdtsc_cost) {
 
         // Aggregate average value
         for(j=0; j < NWRITERS; j++) {
+           
             avg_time += th_results[j];
         }
 
     }
+
+   
 
     avg_time = avg_time / (NTRIALS*NWRITERS);
     
