@@ -11,7 +11,7 @@
 
 // These are for the performance test
 
-#define NWRITERS 8
+#define NWRITERS 1
 #define NENQUEUE 1
 #define NTRIALS 1
 #define OUTLIER_THRESHOLD 1024
@@ -203,19 +203,16 @@ void test5(double rdtsc_cost) {
             free(thd_result);
         }
         
-
         // Aggregate average value
         for(j=0; j < NWRITERS; j++) {
-           
             avg_time += th_results[j];
         }
 
     }
 
-   
-
     avg_time = avg_time / (NTRIALS*NWRITERS);
     
+    printf("Trials: %d | Writers: %d | Enqueue per trial: %d\n", NTRIALS, NWRITERS, NENQUEUE);
     printf("Average time taken: %.3f\n", avg_time);
     printf("Accounting for RDTSCP: %.3f\n", avg_time-rdtsc_cost);
     printf("Test 5 Completed\n");
