@@ -6,8 +6,8 @@
 #include <unistd.h>
 #include "trace1.h"
 
-#define TEST_ENTRY true
-#define TEST_PERFORMANCE false
+#define TEST_ENTRY false
+#define TEST_PERFORMANCE true
 
 
 // These are for the entry test
@@ -16,8 +16,8 @@
 // These are for the performance test
 
 #define NWRITERS 1
-#define NENQUEUE 1
-#define NTRIALS 1
+#define NENQUEUE 1024
+#define NTRIALS 1024
 #define OUTLIER_THRESHOLD 1024
 
 
@@ -27,7 +27,6 @@ double get_rdtscp() {
     uint32_t start_time, end_time;
     int time_elapsed, trials = 1000000;
     double avg_time, total_time = 0;
-
 
     for(int i=0; i<trials; i++) {
         start_time = RDTSCP();
@@ -86,8 +85,6 @@ void test2() {
         bool res = get_trace(new_format, 2, 5, 1, 0 , 0, 0, 0, 0, 0, 0, 0);
         assert(res);
     }
-    
-
 
     printf("Test 2 -- Passed\n");
 }
@@ -203,10 +200,12 @@ void test5(double rdtsc_cost) {
     pthread_t writers[NWRITERS];
     double th_results[NWRITERS];
     int i,j;
-    double avg_time = 0;
+    double trial_time, avg_time = 0;
 
    // Make the threads
     for(i=0; i < NTRIALS; i++) {
+        trial_time = 0;
+
         trace_init();
 
         // Create the threads
@@ -228,12 +227,15 @@ void test5(double rdtsc_cost) {
         
         // Aggregate average value
         for(j=0; j < NWRITERS; j++) {
-            avg_time += th_results[j];
+            trial_time += th_results[j];
         }
 
+        trial_time = trial_time / NWRITERS;
+        avg_time += trial_time;
     }
 
-    avg_time = avg_time / (NTRIALS*NWRITERS);
+   
+    avg_time = avg_time / NTRIALS;
     
     printf("Trials: %d | Writers: %d | Enqueue per trial: %d\n", NTRIALS, NWRITERS, NENQUEUE);
     printf("Average time taken: %.3f\n", avg_time);
