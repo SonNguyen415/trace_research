@@ -6,8 +6,12 @@
 #include <unistd.h>
 #include "trace1.h"
 
-#define TEST_ENTRY false
-#define TEST_PERFORMANCE true
+#define TEST_ENTRY true
+#define TEST_PERFORMANCE false
+
+
+// These are for the entry test
+#define NENTRY 1024
 
 // These are for the performance test
 
@@ -41,9 +45,18 @@ void test1() {
     printf("Test 1: Entering a single event\n");
     trace_init();
 
+    int i;
     char * new_format = "Event A: %d\n";
-    for(int i=0; i<10; i++) {
-        int res = trace_event(new_format, 1, 5, 0, 0 , 0, 0, 0, 0, 0, 0, 0);
+    
+    // Enqueue NENTRY items
+    for(i=0; i<NENTRY; i++) {
+        bool res = trace_event(new_format, 1, 5, 0, 0 , 0, 0, 0, 0, 0, 0, 0);
+        assert(res);
+    }
+
+    // Dequeue NENTRY items
+    for(i=0; i<NENTRY; i++) {
+        bool res = get_trace();
         assert(res);
     }
 
@@ -54,18 +67,27 @@ void test1() {
 void test2() {
     printf("Test 2: Entering events of different types\n");
     trace_init();
-
-    char * new_format = "Event A: %d\n";
-    for(int i=0; i<4; i++) {
-        int res = trace_event(new_format, 1, 5, 0, 0 , 0, 0, 0, 0, 0, 0, 0);
+    int i;
+    char * new_format;
+    
+    new_format = "Event A: %d\n";
+    for(i=0; i<NENTRY; i++) {
+        bool res = trace_event(new_format, 1, 5, 0, 0 , 0, 0, 0, 0, 0, 0, 0);
         assert(res);
     }
 
     new_format = "Event B: a: %d | b: %d\n";
-    for(int i=0; i<2; i++) {
-        int res = trace_event(new_format, 2, 5, 1, 0 , 0, 0, 0, 0, 0, 0, 0);
+    for(i=0; i<NENTRY; i++) {
+        bool res = trace_event(new_format, 2, 5, 1, 0 , 0, 0, 0, 0, 0, 0, 0);
         assert(res);
     }
+
+    for(i=0; i<NENTRY*2; i++) {
+        bool res = get_trace(new_format, 2, 5, 1, 0 , 0, 0, 0, 0, 0, 0, 0);
+        assert(res);
+    }
+    
+
 
     printf("Test 2 -- Passed\n");
 }
@@ -78,14 +100,15 @@ void test3() {
     trace_init();
 
     char * new_format = "Event A: %d\n";
-    int res = -1;
+    bool res = false;
     for(int i=0; i<MAX_EVENTS-1; i++) {
         res = trace_event(new_format, 1, 5, 0, 0 , 0, 0, 0, 0, 0, 0, 0);
-        assert(res >= 0);
+        assert(res);
     }
 
+    // Should return false when you overwrite
     res = trace_event(new_format, 1, 4, 0, 0 , 0, 0, 0, 0, 0, 0, 0);
-    printf("Return: %d\n", res);
+    assert(res == false);
 
     printf("Test 3 -- Passed\n");
 }

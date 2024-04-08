@@ -38,8 +38,7 @@ void trace_init()
 /* Test function to add an event to the trace buffer
  * @param format the string that the data will be written into when dequeued
  * @param num_args the number of arguments to the event
- * @param others the 
- * @return -1 on error, the time elapsed otherwise
+ * @return true on success, false otherwise
  */ 
 static inline bool trace_event(const char * format, const int num_args, int a, int b, int c, \
                         int d, int e, int f, int g, int h, int i, int j) 
@@ -73,7 +72,7 @@ static inline bool trace_event(const char * format, const int num_args, int a, i
 
 
 // Start from current write ptr, we read the entire buffer
-// @return 0 on success, -1 on any error
+// @return true on success, false otherwise
 bool output_trace() 
 {
     struct t_event cur_trace;
@@ -104,6 +103,26 @@ bool output_trace()
     }
     return ret;
 }
+
+
+// Read the buffer, but do not output, only dequeue 
+// @return true on success, false otherwise
+bool get_trace() {
+    struct t_event cur_trace;
+    bool ret = true;
+    int num_events = ck_ring_size(&trace_buffer.my_ring);
+
+    for(int i=0; i < num_events; i++) {
+        ret = CK_RING_DEQUEUE_MPSC(trace_buffer, &trace_buffer.my_ring, trace_buffer.traces, &cur_trace);
+       
+        if(!ret) {
+            return ret;
+        } 
+        
+    }
+    return ret;
+}  
+
 
 
 static inline uint32_t rdtscp(void) 
