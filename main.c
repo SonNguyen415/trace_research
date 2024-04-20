@@ -169,7 +169,7 @@ void * thread_trace(void * arg) {
     double time_start, time_end;
 
     thd_id = *((int *)arg);
-    int args[1] = {5};
+    int args[4] = {1, 2, 3, 4};
 
     // Set up average time for returning later from thread
     double * avg_time = (double *)malloc(sizeof(double));
@@ -190,7 +190,7 @@ void * thread_trace(void * arg) {
         assert(res);
 
         double time_elapsed = time_end - time_start;
-        int random_number = rand() % 40 + 10;
+        int random_number = rand() % 5;
         usleep(random_number);
 
         if(time_elapsed > 0) {
