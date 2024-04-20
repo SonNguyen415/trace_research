@@ -4,18 +4,21 @@
 #include <pthread.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include "trace1.h"
+#include "rdtscp.h"
+#include "tracer.h"
+
+#undef NARGS
+#define NARGS 2
 
 #define TEST_ENTRY false
 #define TEST_PERFORMANCE true
-
 
 // These are for the entry test
 #define NENTRY 1024
 
 // These are for the performance test
 
-#define NWRITERS 1
+#define NWRITERS 8
 #define NENQUEUE 1024
 #define NTRIALS 1024
 #define OUTLIER_THRESHOLD 1024
@@ -29,8 +32,8 @@ double get_rdtscp() {
     double avg_time, total_time = 0;
 
     for(int i=0; i<trials; i++) {
-        start_time = RDTSCP();
-        end_time = RDTSCP();
+        start_time = rdtscp();
+        end_time = rdtscp();
         time_elapsed = end_time - start_time;
         total_time += time_elapsed;
     }
@@ -45,11 +48,12 @@ void test1() {
     trace_init();
 
     int i;
-    char * new_format = "Event A: %d\n";
+    int args[1] = {5};
+    char * format = "Event A: %d\n";
     
     // Enqueue NENTRY items
     for(i=0; i<NENTRY; i++) {
-        bool res = trace_event(new_format, 1, 5, 0, 0 , 0, 0, 0, 0, 0, 0, 0);
+        bool res = trace_event(format, 1, args);
         assert(res);
     }
 
@@ -67,22 +71,25 @@ void test2() {
     printf("Test 2: Entering events of different types\n");
     trace_init();
     int i;
-    char * new_format;
-    
-    new_format = "Event A: %d\n";
+    char * format;
+
+    int args_a[1] = {5};
+    format = "Event A: %d\n";
     for(i=0; i<NENTRY; i++) {
-        bool res = trace_event(new_format, 1, 5, 0, 0 , 0, 0, 0, 0, 0, 0, 0);
+        bool res = trace_event(format, 1, args_a);
         assert(res);
     }
 
-    new_format = "Event B: a: %d | b: %d\n";
+    
+    int args_b[2] = {4, 3};
+    format = "Event B: a: %d | b: %d\n";
     for(i=0; i<NENTRY; i++) {
-        bool res = trace_event(new_format, 2, 5, 1, 0 , 0, 0, 0, 0, 0, 0, 0);
+        bool res = trace_event(format, 2, args_b);
         assert(res);
     }
 
     for(i=0; i<NENTRY*2; i++) {
-        bool res = get_trace(new_format, 2, 5, 1, 0 , 0, 0, 0, 0, 0, 0, 0);
+        bool res = get_trace();
         assert(res);
     }
 
@@ -96,15 +103,17 @@ void test3() {
     // Insert max elements
     trace_init();
 
-    char * new_format = "Event A: %d\n";
+    int args[1] = {5};
+    char * format = "Event A: %d\n";
     bool res = false;
     for(int i=0; i<MAX_EVENTS-1; i++) {
-        res = trace_event(new_format, 1, 5, 0, 0 , 0, 0, 0, 0, 0, 0, 0);
+        bool res = trace_event(format, 1, args);
         assert(res);
     }
 
+    args[0] = 4;
     // Should return false when you overwrite
-    res = trace_event(new_format, 1, 4, 0, 0 , 0, 0, 0, 0, 0, 0, 0);
+    res = trace_event(format, 1, args);
     assert(res == false);
 
     printf("Test 3 -- Passed\n");
@@ -112,27 +121,26 @@ void test3() {
 
 
 // Performance calculation
-void test4(double rdtsc_cost) {
-    printf("Test 4: Performance Test for a single writer\n");
+void test4(double rdtsc_cost, char * format, int num_args, int args[]) {
+    printf("Test 4: Performance Test for a single writer with %d arguments\n", num_args);
 
-    char * new_format = "Event A: %d\n";
+   
     double avg_time, total_time = 0;
     int time_start,time_end, time_elapsed;
     int count = 0;
-
     // Create a CSV file to write to
     // FILE *fpt;
     // fpt = fopen("SingleWriter.csv", "w+");
 
     // // Headers for csv
     // fprintf(fpt,"Trial, Enqueue, Time Elapsed\n");
-
+    printf("NARGS from main: %d\n", NARGS);
     for(int i=0; i < NTRIALS; i++) {
         trace_init();
         for(int j=0; j<NENQUEUE; j++) {
-            time_start = RDTSCP();
-            bool res = TRACE_EVENT(new_format, 1, 5, 0, 0 , 0, 0, 0, 0, 0, 0, 0);
-            time_end = RDTSCP();
+            time_start = rdtscp();
+            bool res = TRACE_EVENT(format, num_args, args);
+            time_end = rdtscp();
             assert(res);
 
             time_elapsed = time_end-time_start;
@@ -145,6 +153,8 @@ void test4(double rdtsc_cost) {
             } else {
                 total_time += time_elapsed;
             }
+
+            
         }
     }
 
@@ -160,8 +170,11 @@ void test4(double rdtsc_cost) {
 
 
 void * thread_trace(void * arg) {
-    int thd_id = *((int *)arg);
+    int thd_id;
     double time_start, time_end;
+
+    thd_id = *((int *)arg);
+    int args[1] = {5};
 
     // Set up average time for returning later from thread
     double * avg_time = (double *)malloc(sizeof(double));
@@ -171,21 +184,21 @@ void * thread_trace(void * arg) {
     }
     *avg_time = 0;
 
-    char * new_format = "Event A: %d\n";
+    char * format = "Event A: %d\n";
 
     // Enqueue to the ring buffer NENQUEUE times
     for(int i=0; i<NENQUEUE; i++) {
-        time_start = RDTSCP();
-        bool res = TRACE_EVENT(new_format, 1, 5, 0, 0 , 0, 0, 0, 0, 0, 0, 0);
-        time_end = RDTSCP();
+        time_start = RDTSCP_BEFORE();
+        bool res = TRACE_EVENT(format, 1, args);
+        time_end = RDTSCP_AFTER();
 
         assert(res);
 
-        *avg_time += time_end - time_start;    
-        // printf("    Time: %.3f\n", time_end - time_start);
+        *avg_time += (time_end - time_start);    
     }
 
     *avg_time = *avg_time / NENQUEUE;
+
 
     pthread_exit(avg_time);
     return avg_time;
@@ -269,13 +282,21 @@ int main() {
         printf("RDTSCP Cost: %0.3f\n", rdtsc_cost); 
         printf("----------------------------------------------\n"); 
 
-        // 4. Performance testing - single writer
-        test4(rdtsc_cost);
+        char * format = "Event A: %d\n";
+        // int args_a[1] = {5};
+
+        // // 4a. Performance testing - single writer
+        // test4(rdtsc_cost, format, 1, args_a);
+        // printf("----------------------------------------------\n"); 
+
+        int args_b[8] = {1, 2, 3, 4, 5, 6, 7, 8};
+        // 4b. Performance testing - 8 args per event
+        test4(rdtsc_cost, format, 8, args_b);
         printf("----------------------------------------------\n"); 
 
         // 5. Performance testing - multiple writers
-        test5(rdtsc_cost);
-        printf("----------------------------------------------\n");
+        // test5(rdtsc_cost);
+        // printf("----------------------------------------------\n");
 
     }
    
