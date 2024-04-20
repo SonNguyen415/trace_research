@@ -53,7 +53,6 @@ static inline bool trace_event(const char * format, const int num_args, int args
 
     for(int i=0; i<num_args; i++) {
         new_trace.args[i] = args[i];
-        printf("i=%d | num_args: %d\n", i, num_args);
     }
    
 
@@ -92,34 +91,16 @@ bool output_trace()
 // @return true on success, false otherwise
 bool get_trace() {
     struct t_event cur_trace;
-    bool ret = true;
-    int num_events = ck_ring_size(&trace_buffer.my_ring);
+    bool ret ;
 
-    for(int i=0; i < num_events; i++) {
-        ret = CK_RING_DEQUEUE_MPSC(trace_buffer, &trace_buffer.my_ring, trace_buffer.traces, &cur_trace);
-       
-        if(!ret) {
-            return ret;
-        } 
-        
-    }
+    ret = CK_RING_DEQUEUE_MPSC(trace_buffer, &trace_buffer.my_ring, trace_buffer.traces, &cur_trace);
+    
     return ret;
 }  
-
-
-
-static inline uint32_t rdtscp(void) 
-{
-    uint32_t a = 0;
-    asm volatile("rdtscp": "=a"(a):: "edx");
-    return a;
-}
 
 
 #define TRACE_EVENT(format, num_args, args) \
     trace_event(format, num_args, args)
 
-
-#define RDTSCP(void) rdtscp(void)
 
 #endif

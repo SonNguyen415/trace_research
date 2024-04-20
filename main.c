@@ -4,7 +4,6 @@
 #include <pthread.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include "rdtscp.h"
 #include "tracer.h"
 
 #undef NARGS
@@ -17,11 +16,19 @@
 #define NENTRY 1024
 
 // These are for the performance test
-
 #define NWRITERS 8
 #define NENQUEUE 1024
 #define NTRIALS 1024
 #define OUTLIER_THRESHOLD 1024
+
+
+
+static inline uint32_t rdtscp(void) 
+{
+    uint32_t a = 0;
+    asm volatile("rdtscp": "=a"(a):: "edx");
+    return a;
+}
 
 
 // Get the cost of rdtsc, this is done across 1,000,000 trials
@@ -128,12 +135,7 @@ void test4(double rdtsc_cost, char * format, int num_args, int args[]) {
     double avg_time, total_time = 0;
     int time_start,time_end, time_elapsed;
     int count = 0;
-    // Create a CSV file to write to
-    // FILE *fpt;
-    // fpt = fopen("SingleWriter.csv", "w+");
 
-    // // Headers for csv
-    // fprintf(fpt,"Trial, Enqueue, Time Elapsed\n");
     printf("NARGS from main: %d\n", NARGS);
     for(int i=0; i < NTRIALS; i++) {
         trace_init();
@@ -145,9 +147,6 @@ void test4(double rdtsc_cost, char * format, int num_args, int args[]) {
 
             time_elapsed = time_end-time_start;
 
-            
-            // fprintf(fpt,"%d, %d, %d\n", i, j, time_elapsed);
-
             if(time_elapsed > OUTLIER_THRESHOLD) {
                 count++;
             } else {
@@ -157,9 +156,6 @@ void test4(double rdtsc_cost, char * format, int num_args, int args[]) {
             
         }
     }
-
-    // fclose(fpt);
-    
     
     avg_time = total_time / (NTRIALS*NENQUEUE);
     printf("Average time taken: %.3f\n", avg_time);
@@ -188,9 +184,9 @@ void * thread_trace(void * arg) {
 
     // Enqueue to the ring buffer NENQUEUE times
     for(int i=0; i<NENQUEUE; i++) {
-        time_start = RDTSCP_BEFORE();
+        time_start = rdtscp();
         bool res = TRACE_EVENT(format, 1, args);
-        time_end = RDTSCP_AFTER();
+        time_end = rdtscp();
 
         assert(res);
 
@@ -283,11 +279,11 @@ int main() {
         printf("----------------------------------------------\n"); 
 
         char * format = "Event A: %d\n";
-        // int args_a[1] = {5};
+        int args_a[1] = {5};
 
         // // 4a. Performance testing - single writer
-        // test4(rdtsc_cost, format, 1, args_a);
-        // printf("----------------------------------------------\n"); 
+        test4(rdtsc_cost, format, 1, args_a);
+        printf("----------------------------------------------\n"); 
 
         int args_b[8] = {1, 2, 3, 4, 5, 6, 7, 8};
         // 4b. Performance testing - 8 args per event
@@ -295,8 +291,8 @@ int main() {
         printf("----------------------------------------------\n"); 
 
         // 5. Performance testing - multiple writers
-        // test5(rdtsc_cost);
-        // printf("----------------------------------------------\n");
+        test5(rdtsc_cost);
+        printf("----------------------------------------------\n");
 
     }
    
