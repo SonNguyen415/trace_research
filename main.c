@@ -20,7 +20,7 @@
 #define NENQUEUE 1024
 #define NTRIALS 1024
 #define OUTLIER_THRESHOLD 1024
-
+#define TEST_WORST_CASE true
 
 
 static inline uint32_t rdtscp(void) 
@@ -66,7 +66,7 @@ void test1() {
 
     // Dequeue NENTRY items
     for(i=0; i<NENTRY; i++) {
-        bool res = get_trace();
+        bool res = GET_TRACE();
         assert(res);
     }
 
@@ -96,7 +96,7 @@ void test2() {
     }
 
     for(i=0; i<NENTRY*2; i++) {
-        bool res = get_trace();
+        bool res = GET_TRACE();
         assert(res);
     }
 
@@ -190,9 +190,12 @@ void * thread_trace(void * arg) {
         assert(res);
 
         double time_elapsed = time_end - time_start;
-        int random_number = rand() % 5;
-        usleep(random_number);
 
+        if(!TEST_WORST_CASE) {
+            int random_number = rand() % 5;
+            usleep(random_number);
+        }
+        
         if(time_elapsed > 0) {
             *avg_time += time_elapsed;    
         }
@@ -216,11 +219,15 @@ void test5(double rdtsc_cost) {
     int i,j;
     double trial_time, avg_time = 0;
 
-     // Seed random number generator so we can induce randomness in multiple writers
-    srand(time(NULL));
+   
 
    // Make the threads
     for(i=0; i < NTRIALS; i++) {
+        // Seed random number generator so we can induce randomness in multiple writers
+        if(!TEST_WORST_CASE) {
+            srand(time(NULL));
+        }
+
         trial_time = 0;
 
         trace_init();

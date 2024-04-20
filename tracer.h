@@ -37,10 +37,10 @@ void trace_init()
     ck_ring_init(&trace_buffer.my_ring, MAX_EVENTS);
 }
 
-
 /* Test function to add an event to the trace buffer
  * @param format the string that the data will be written into when dequeued
- * @param num_args the number of arguments to the event
+ * @param num_args the number of arguments to the event, specifying the length of args
+ * @param args the array containing the arguments to be inserted into format
  * @return true on success, false otherwise
  */ 
 static inline bool trace_event(const char * format, const int num_args, int args[]) 
@@ -90,12 +90,11 @@ bool output_trace()
 
 // Read the buffer, but do not output to file, only dequeue 
 // @return true on success, false otherwise
-bool get_trace() {
+bool get_trace() 
+{
     struct t_event cur_trace;
     bool ret ;
-
     ret = CK_RING_DEQUEUE_MPSC(trace_buffer, &trace_buffer.my_ring, trace_buffer.traces, &cur_trace);
-    
     return ret;
 }  
 
@@ -103,5 +102,8 @@ bool get_trace() {
 #define TRACE_EVENT(format, num_args, args) \
     trace_event(format, num_args, args)
 
+#define GET_TRACE() get_trace()
+
+#define OUTPUT_TRACE() output_trace()
 
 #endif
