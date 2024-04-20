@@ -4,10 +4,10 @@
 #include <pthread.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include "tracer.h"
+#include <time.h>
 
-#undef NARGS
-#define NARGS 2
+#define NARGS 8
+#include "tracer.h"
 
 #define TEST_ENTRY false
 #define TEST_PERFORMANCE true
@@ -136,7 +136,6 @@ void test4(double rdtsc_cost, char * format, int num_args, int args[]) {
     int time_start,time_end, time_elapsed;
     int count = 0;
 
-    printf("NARGS from main: %d\n", NARGS);
     for(int i=0; i < NTRIALS; i++) {
         trace_init();
         for(int j=0; j<NENQUEUE; j++) {
@@ -190,7 +189,13 @@ void * thread_trace(void * arg) {
 
         assert(res);
 
-        *avg_time += (time_end - time_start);    
+        double time_elapsed = time_end - time_start;
+        int random_number = rand() % 40 + 10;
+        usleep(random_number);
+
+        if(time_elapsed > 0) {
+            *avg_time += time_elapsed;    
+        }
     }
 
     *avg_time = *avg_time / NENQUEUE;
@@ -205,11 +210,14 @@ void * thread_trace(void * arg) {
 void test5(double rdtsc_cost) {
     printf("Test 5: Performance Test for multiple writers\n");   
     printf("CPUS Available: %d\n", get_nprocs());
-
+    
     pthread_t writers[NWRITERS];
     double th_results[NWRITERS];
     int i,j;
     double trial_time, avg_time = 0;
+
+     // Seed random number generator so we can induce randomness in multiple writers
+    srand(time(NULL));
 
    // Make the threads
     for(i=0; i < NTRIALS; i++) {
@@ -274,6 +282,7 @@ int main() {
   
 
     if(TEST_PERFORMANCE) {
+       
         double rdtsc_cost = get_rdtscp();
         printf("RDTSCP Cost: %0.3f\n", rdtsc_cost); 
         printf("----------------------------------------------\n"); 
@@ -281,16 +290,16 @@ int main() {
         char * format = "Event A: %d\n";
         int args_a[1] = {5};
 
-        // // 4a. Performance testing - single writer
+        // 4a. Performance testing - single writer
         test4(rdtsc_cost, format, 1, args_a);
         printf("----------------------------------------------\n"); 
 
+        // 4b. Performance testing - 8 args per events
         int args_b[8] = {1, 2, 3, 4, 5, 6, 7, 8};
-        // 4b. Performance testing - 8 args per event
         test4(rdtsc_cost, format, 8, args_b);
         printf("----------------------------------------------\n"); 
 
-        // 5. Performance testing - multiple writers
+        // 5. Performance testing - multiple writers 
         test5(rdtsc_cost);
         printf("----------------------------------------------\n");
 

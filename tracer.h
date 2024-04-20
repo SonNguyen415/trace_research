@@ -7,11 +7,14 @@
 
 // 2^20 buffer size
 #define MAX_EVENTS 1048576
-#define NARGS 1
+
+#ifndef NARGS
+#define NARGS 1 // Default value
+#endif
 
 // Trace structure
 struct t_event {
-    int args[NARGS];
+    unsigned long args[NARGS];
     
     // Some other variables for timestamp and stuff that all events should store
     const char * format;
@@ -50,11 +53,9 @@ static inline bool trace_event(const char * format, const int num_args, int args
     new_trace.num_args = num_args;
     
     // Add arguments to the trace structure based on event type
-
     for(int i=0; i<num_args; i++) {
         new_trace.args[i] = args[i];
     }
-   
 
     // Enqueue into the ring buffer
     ret = CK_RING_ENQUEUE_MPSC(trace_buffer, &trace_buffer.my_ring, trace_buffer.traces, &new_trace);
