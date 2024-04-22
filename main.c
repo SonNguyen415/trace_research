@@ -55,7 +55,7 @@ void test1() {
     trace_init();
 
     int i;
-    int args[1] = {5};
+    unsigned long args[1] = {5};
     char * format = "Event A: %d\n";
     
     // Enqueue NENTRY items
@@ -80,7 +80,7 @@ void test2() {
     int i;
     char * format;
 
-    int args_a[1] = {5};
+    unsigned long args_a[1] = {5};
     format = "Event A: %d\n";
     for(i=0; i<NENTRY; i++) {
         bool res = trace_event(format, 1, args_a);
@@ -88,7 +88,7 @@ void test2() {
     }
 
     
-    int args_b[2] = {4, 3};
+    unsigned long args_b[2] = {4, 3};
     format = "Event B: a: %d | b: %d\n";
     for(i=0; i<NENTRY; i++) {
         bool res = trace_event(format, 2, args_b);
@@ -110,7 +110,7 @@ void test3() {
     // Insert max elements
     trace_init();
 
-    int args[1] = {5};
+    unsigned long args[1] = {5};
     char * format = "Event A: %d\n";
     bool res = false;
     for(int i=0; i<MAX_EVENTS-1; i++) {
@@ -128,7 +128,7 @@ void test3() {
 
 
 // Performance calculation
-void test4(double rdtsc_cost, char * format, int num_args, int args[]) {
+void test4(double rdtsc_cost, char * format, int num_args, unsigned long args[]) {
     printf("Test 4: Performance Test for a single writer with %d arguments\n", num_args);
 
    
@@ -169,7 +169,7 @@ void * thread_trace(void * arg) {
     double time_start, time_end;
 
     thd_id = *((int *)arg);
-    int args[4] = {1, 2, 3, 4};
+    unsigned long args[4] = {1, 2, 3, 4};
 
     // Set up average time for returning later from thread
     double * avg_time = (double *)malloc(sizeof(double));
@@ -295,14 +295,14 @@ int main() {
         printf("----------------------------------------------\n"); 
 
         char * format = "Event A: %d\n";
-        int args_a[1] = {5};
+        unsigned long args_a[1] = {5};
 
         // 4a. Performance testing - single writer
         test4(rdtsc_cost, format, 1, args_a);
         printf("----------------------------------------------\n"); 
 
         // 4b. Performance testing - 8 args per events
-        int args_b[8] = {1, 2, 3, 4, 5, 6, 7, 8};
+        unsigned long args_b[8] = {1, 2, 3, 4, 5, 6, 7, 8};
         test4(rdtsc_cost, format, 8, args_b);
         printf("----------------------------------------------\n"); 
 
