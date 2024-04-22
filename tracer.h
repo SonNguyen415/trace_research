@@ -16,8 +16,9 @@
 struct t_event {
     unsigned long args[NARGS];
     
-    // Some other variables for timestamp and stuff that all events should store
+    // Some other variables for timestamp and stuff that all events should store    
     const char * format;
+    double rdtscp;
     int num_args;
 };
 
@@ -30,6 +31,15 @@ struct t_trace_buffer {
 
 CK_RING_PROTOTYPE(trace_buffer, t_event);
 
+
+// Read current time stamp
+static inline uint32_t rdtscp(void) 
+{
+    uint32_t a = 0;
+    asm volatile("rdtscp": "=a"(a):: "edx");
+    return a;
+}
+#define RDTSCP() rdtscp()
 
 // Initializer for the ck ring
 void trace_init() 
@@ -50,14 +60,13 @@ static inline bool trace_event(const char * format, const int num_args, unsigned
     bool ret = true;
 
     new_trace.format = format;
+    // new_trace.rdtscp = RDTSCP();
     new_trace.num_args = num_args;
     
     // Add arguments to the trace structure based on event type
     for(int i=0; i<num_args; i++) {
         new_trace.args[i] = args[i];
     }
-
-    // Add other variables
 
     // Enqueue into the ring buffer
     ret = CK_RING_ENQUEUE_MPSC(trace_buffer, &trace_buffer.my_ring, trace_buffer.traces, &new_trace);
@@ -108,5 +117,6 @@ bool get_trace()
 #define GET_TRACE() get_trace()
 
 #define OUTPUT_TRACE() output_trace()
+
 
 #endif

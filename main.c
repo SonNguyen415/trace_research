@@ -23,24 +23,16 @@
 #define TEST_WORST_CASE true
 
 
-static inline uint32_t rdtscp(void) 
-{
-    uint32_t a = 0;
-    asm volatile("rdtscp": "=a"(a):: "edx");
-    return a;
-}
-
-
 // Get the cost of rdtsc, this is done across 1,000,000 trials
 // @return the average time rdtsc takes
-double get_rdtscp() {
+double get_rdtscp_cost() {
     uint32_t start_time, end_time;
     int time_elapsed, trials = 1000000;
     double avg_time, total_time = 0;
 
     for(int i=0; i<trials; i++) {
-        start_time = rdtscp();
-        end_time = rdtscp();
+        start_time = RDTSCP() ;
+        end_time = RDTSCP() ;
         time_elapsed = end_time - start_time;
         total_time += time_elapsed;
     }
@@ -139,9 +131,9 @@ void test4(double rdtsc_cost, char * format, int num_args, unsigned long args[])
     for(int i=0; i < NTRIALS; i++) {
         trace_init();
         for(int j=0; j<NENQUEUE; j++) {
-            time_start = rdtscp();
+            time_start = RDTSCP() ;
             bool res = TRACE_EVENT(format, num_args, args);
-            time_end = rdtscp();
+            time_end = RDTSCP() ;
             assert(res);
 
             time_elapsed = time_end-time_start;
@@ -183,9 +175,9 @@ void * thread_trace(void * arg) {
 
     // Enqueue to the ring buffer NENQUEUE times
     for(int i=0; i<NENQUEUE; i++) {
-        time_start = rdtscp();
+        time_start = RDTSCP() ;
         bool res = TRACE_EVENT(format, 1, args);
-        time_end = rdtscp();
+        time_end = RDTSCP() ;
 
         assert(res);
 
@@ -290,7 +282,7 @@ int main() {
 
     if(TEST_PERFORMANCE) {
        
-        double rdtsc_cost = get_rdtscp();
+        double rdtsc_cost = get_rdtscp_cost();
         printf("RDTSCP Cost: %0.3f\n", rdtsc_cost); 
         printf("----------------------------------------------\n"); 
 
