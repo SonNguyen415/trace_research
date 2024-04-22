@@ -43,7 +43,7 @@ void trace_init()
  * @param args the array containing the arguments to be inserted into format
  * @return true on success, false otherwise
  */ 
-static inline bool trace_event(const char * format, const int num_args, int args[]) 
+static inline bool trace_event(const char * format, const int num_args, unsigned long args[]) 
 {
     // Get the write ptr
     struct t_event new_trace;
@@ -56,6 +56,8 @@ static inline bool trace_event(const char * format, const int num_args, int args
     for(int i=0; i<num_args; i++) {
         new_trace.args[i] = args[i];
     }
+
+    // Add other variables
 
     // Enqueue into the ring buffer
     ret = CK_RING_ENQUEUE_MPSC(trace_buffer, &trace_buffer.my_ring, trace_buffer.traces, &new_trace);
@@ -71,6 +73,7 @@ bool output_trace()
     struct t_event cur_trace;
     bool ret = true;
     int num_events = ck_ring_size(&trace_buffer.my_ring);
+    
 
     for(int i=0; i < num_events; i++) {
         ret = CK_RING_DEQUEUE_MPSC(trace_buffer, &trace_buffer.my_ring, trace_buffer.traces, &cur_trace);
