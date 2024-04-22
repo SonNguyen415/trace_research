@@ -18,7 +18,7 @@
 // These are for the performance test
 #define NWRITERS 8
 #define NENQUEUE 1024
-#define NTRIALS 1024
+#define NTRIALS 4096
 #define OUTLIER_THRESHOLD 1024
 #define TEST_WORST_CASE true
 
