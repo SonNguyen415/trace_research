@@ -303,19 +303,19 @@ int main() {
         test4(rdtsc_cost, format, 1, args_a);
         printf("----------------------------------------------\n"); 
         
-        //   // 4c. Performance testing - 4 args per events
-        // unsigned long args_b[4] = {1, 2, 3, 4};
-        // test4(rdtsc_cost, format, 4, args_b);
-        // printf("----------------------------------------------\n"); 
+          // 4c. Performance testing - 4 args per events
+        unsigned long args_b[4] = {1, 2, 3, 4};
+        test4(rdtsc_cost, format, 4, args_b);
+        printf("----------------------------------------------\n"); 
 
-        // // 4c. Performance testing - 8 args per events
-        // unsigned long args_c[8] = {1, 2, 3, 4, 5, 6, 7, 8};
-        // test4(rdtsc_cost, format, 8, args_c);
-        // printf("----------------------------------------------\n"); 
+        // 4c. Performance testing - 8 args per events
+        unsigned long args_c[8] = {1, 2, 3, 4, 5, 6, 7, 8};
+        test4(rdtsc_cost, format, 8, args_c);
+        printf("----------------------------------------------\n"); 
 
-        // // 5. Performance testing - multiple writers 
-        // test5(rdtsc_cost);
-        // printf("----------------------------------------------\n");
+        // 5. Performance testing - multiple writers 
+        test5(rdtsc_cost);
+        printf("----------------------------------------------\n");
 
     }
    

@@ -56,7 +56,7 @@ static inline bool trace_event(const char * format, const int num_args, unsigned
     new_trace.format = format;
     asm volatile("rdtsc": "=a"(low), "=d" (high));
     new_trace.time_stamp = ((uint64_t) high << 32 | low);
-    asm volatile("cpuid": "=a"(new_trace.cpuid)::);
+    asm volatile("cpuid": "=a"(new_trace.cpuid));
     new_trace.num_args = num_args;
     
     // Add arguments to the trace structure based on event type

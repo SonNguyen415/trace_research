@@ -1,7 +1,7 @@
 CC = gcc
 CFLAGS = -Wall -g -Wno-unused-parameter -pthread
 SRCS = main.c tracer.h
-EXEC = tracer
+EXEC = tracer_cpuid
 INC_DIR = .
 CK_DIR = ./ck
 
