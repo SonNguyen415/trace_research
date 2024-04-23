@@ -1,6 +1,6 @@
 CC = gcc
 CFLAGS = -Wall -g -Wno-unused-parameter -pthread
-SRCS = main.c 
+SRCS = main.c tracer.h
 EXEC = tracer
 INC_DIR = .
 CK_DIR = ./ck
@@ -12,3 +12,5 @@ $(EXEC): $(SRCS)
 # Cleanup rule
 clean:
 	rm -f $(EXEC)
+
+main.c: tracer.h

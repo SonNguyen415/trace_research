@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <ck_ring.h>
 
+
 // 2^20 buffer size
 #define MAX_EVENTS 1048576
 
@@ -18,7 +19,8 @@ struct t_event {
     
     // Some other variables for timestamp and stuff that all events should store    
     const char * format;
-    double rdtscp;
+    uint64_t time_stamp;
+    uint64_t cpuid;
     int num_args;
 };
 
@@ -29,17 +31,9 @@ struct t_trace_buffer {
 } trace_buffer;
 
 
+
 CK_RING_PROTOTYPE(trace_buffer, t_event);
 
-
-// Read current time stamp
-static inline uint32_t rdtscp(void) 
-{
-    uint32_t a = 0;
-    asm volatile("rdtscp": "=a"(a):: "edx");
-    return a;
-}
-#define RDTSCP() rdtscp()
 
 // Initializer for the ck ring
 void trace_init() 
@@ -50,17 +44,19 @@ void trace_init()
 /* Test function to add an event to the trace buffer
  * @param format the string that the data will be written into when dequeued
  * @param num_args the number of arguments to the event, specifying the length of args
- * @param args the array containing the arguments to be inserted into format
+ * @param args the array containing the argumefnts to be inserted into format
  * @return true on success, false otherwise
  */ 
 static inline bool trace_event(const char * format, const int num_args, unsigned long args[]) 
 {
-    // Get the write ptr
+    unsigned int low,high;
     struct t_event new_trace;
     bool ret = true;
 
     new_trace.format = format;
-    // new_trace.rdtscp = RDTSCP();
+    asm volatile("rdtsc": "=a"(low), "=d" (high));
+    new_trace.time_stamp = ((uint64_t) high << 32 | low);
+    // asm volatile("cpuid": "=a"(new_trace.cpuid)::);
     new_trace.num_args = num_args;
     
     // Add arguments to the trace structure based on event type
@@ -77,7 +73,7 @@ static inline bool trace_event(const char * format, const int num_args, unsigned
 
 // Start from current write ptr, we read the entire buffer
 // @return true on success, false otherwise
-bool output_trace() 
+static inline bool output_trace() 
 {
     struct t_event cur_trace;
     bool ret = true;
@@ -102,7 +98,7 @@ bool output_trace()
 
 // Read the buffer, but do not output to file, only dequeue 
 // @return true on success, false otherwise
-bool get_trace() 
+static inline bool get_trace() 
 {
     struct t_event cur_trace;
     bool ret ;

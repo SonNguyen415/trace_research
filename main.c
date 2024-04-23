@@ -19,20 +19,28 @@
 #define NWRITERS 8
 #define NENQUEUE 1024
 #define NTRIALS 4096
-#define OUTLIER_THRESHOLD 1024
+#define OUTLIER_THRESHOLD 1024*1024
 #define TEST_WORST_CASE true
 
+
+// Read current time stamp
+static inline uint64_t rdtscp(void) 
+{
+    unsigned int low,high;
+    asm volatile("rdtscp": "=a"(low), "=d" (high));
+    return ((uint64_t) high << 32 | low);
+}
 
 // Get the cost of rdtsc, this is done across 1,000,000 trials
 // @return the average time rdtsc takes
 double get_rdtscp_cost() {
-    uint32_t start_time, end_time;
-    int time_elapsed, trials = 1000000;
+    uint64_t start_time, end_time, time_elapsed;
+    int trials = 1000000;
     double avg_time, total_time = 0;
 
     for(int i=0; i<trials; i++) {
-        start_time = RDTSCP() ;
-        end_time = RDTSCP() ;
+        start_time = rdtscp();
+        end_time = rdtscp();
         time_elapsed = end_time - start_time;
         total_time += time_elapsed;
     }
@@ -125,15 +133,17 @@ void test4(double rdtsc_cost, char * format, int num_args, unsigned long args[])
 
    
     double avg_time, total_time = 0;
-    int time_start,time_end, time_elapsed;
+    uint64_t time_start,time_end, time_elapsed;
     int count = 0;
 
     for(int i=0; i < NTRIALS; i++) {
         trace_init();
         for(int j=0; j<NENQUEUE; j++) {
-            time_start = RDTSCP() ;
+            time_start = rdtscp();
+            // printf("Time start: %ld\n", time_start);
             bool res = TRACE_EVENT(format, num_args, args);
-            time_end = RDTSCP() ;
+            time_end = rdtscp();
+            // printf("Time end: %ld\n", time_end);
             assert(res);
 
             time_elapsed = time_end-time_start;
@@ -158,7 +168,7 @@ void test4(double rdtsc_cost, char * format, int num_args, unsigned long args[])
 
 void * thread_trace(void * arg) {
     int thd_id;
-    double time_start, time_end;
+    uint64_t time_start, time_end, time_elapsed;
 
     thd_id = *((int *)arg);
     unsigned long args[4] = {1, 2, 3, 4};
@@ -175,13 +185,13 @@ void * thread_trace(void * arg) {
 
     // Enqueue to the ring buffer NENQUEUE times
     for(int i=0; i<NENQUEUE; i++) {
-        time_start = RDTSCP() ;
+        time_start = rdtscp();
         bool res = TRACE_EVENT(format, 1, args);
-        time_end = RDTSCP() ;
+        time_end = rdtscp();
 
         assert(res);
 
-        double time_elapsed = time_end - time_start;
+        time_elapsed = time_end - time_start;
 
         if(!TEST_WORST_CASE) {
             int random_number = rand() % 5;
@@ -292,15 +302,20 @@ int main() {
         // 4a. Performance testing - single writer
         test4(rdtsc_cost, format, 1, args_a);
         printf("----------------------------------------------\n"); 
+        
+        //   // 4c. Performance testing - 4 args per events
+        // unsigned long args_b[4] = {1, 2, 3, 4};
+        // test4(rdtsc_cost, format, 4, args_b);
+        // printf("----------------------------------------------\n"); 
 
-        // 4b. Performance testing - 8 args per events
-        unsigned long args_b[8] = {1, 2, 3, 4, 5, 6, 7, 8};
-        test4(rdtsc_cost, format, 8, args_b);
-        printf("----------------------------------------------\n"); 
+        // // 4c. Performance testing - 8 args per events
+        // unsigned long args_c[8] = {1, 2, 3, 4, 5, 6, 7, 8};
+        // test4(rdtsc_cost, format, 8, args_c);
+        // printf("----------------------------------------------\n"); 
 
-        // 5. Performance testing - multiple writers 
-        test5(rdtsc_cost);
-        printf("----------------------------------------------\n");
+        // // 5. Performance testing - multiple writers 
+        // test5(rdtsc_cost);
+        // printf("----------------------------------------------\n");
 
     }
    
