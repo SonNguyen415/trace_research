@@ -88,8 +88,6 @@ static inline bool output_trace()
         return false;
     }
     
-    printf("Num events: %d\n", num_events);
-
     for(int i=0; i < num_events; i++) {
         ret = CK_RING_DEQUEUE_MPSC(trace_buffer, &trace_buffer.my_ring, trace_buffer.traces, &cur_trace);
        
@@ -97,7 +95,7 @@ static inline bool output_trace()
             return ret;
         } 
 
-        fprintf(fp, "%s,%lu,%lu,%lu,%d", cur_trace.format, cur_trace.time_stamp, cur_trace.cpuid, cur_trace.thdid, cur_trace.num_args);
+        fprintf(fp, "%lu,%lu,%lu,%d", cur_trace.time_stamp, cur_trace.cpuid, cur_trace.thdid, cur_trace.num_args);
 
         for(int j=0; j<cur_trace.num_args; j++) {
             fprintf(fp, ",%ld", cur_trace.args[j]);
