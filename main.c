@@ -10,7 +10,8 @@
 #include "tracer.h"
 
 #define TEST_ENTRY false
-#define TEST_PERFORMANCE true
+#define TEST_PERFORMANCE false
+#define TEST_OUTPUT true
 
 // These are for the entry test
 #define NENTRY 1024
@@ -19,8 +20,11 @@
 #define NWRITERS 8
 #define NENQUEUE 1024
 #define NTRIALS 4096
-#define OUTLIER_THRESHOLD 1024*1024
+#define OUTLIER_THRESHOLD 65536
 #define TEST_WORST_CASE true
+
+// How many data to write for the tracer test
+#define NDATA 64
 
 
 // Read current time stamp
@@ -56,7 +60,7 @@ void test1() {
 
     int i;
     unsigned long args[1] = {5};
-    char * format = "Event A: %d\n";
+    char * format = "Event A: %d";
     
     // Enqueue NENTRY items
     for(i=0; i<NENTRY; i++) {
@@ -81,7 +85,7 @@ void test2() {
     char * format;
 
     unsigned long args_a[1] = {5};
-    format = "Event A: %d\n";
+    format = "Event A: %d";
     for(i=0; i<NENTRY; i++) {
         bool res = trace_event(format, 1, args_a);
         assert(res);
@@ -89,7 +93,7 @@ void test2() {
 
     
     unsigned long args_b[2] = {4, 3};
-    format = "Event B: a: %d | b: %d\n";
+    format = "Event B: a: %d | b: %d";
     for(i=0; i<NENTRY; i++) {
         bool res = trace_event(format, 2, args_b);
         assert(res);
@@ -111,7 +115,7 @@ void test3() {
     trace_init();
 
     unsigned long args[1] = {5};
-    char * format = "Event A: %d\n";
+    char * format = "Event A: %d";
     bool res = false;
     for(int i=0; i<MAX_EVENTS-1; i++) {
         bool res = trace_event(format, 1, args);
@@ -181,7 +185,7 @@ void * thread_trace(void * arg) {
     }
     *avg_time = 0;
 
-    char * format = "Event A: %d\n";
+    char * format = "Event A: %d, %d, %d, %d";
 
     // Enqueue to the ring buffer NENQUEUE times
     for(int i=0; i<NENQUEUE; i++) {
@@ -271,6 +275,50 @@ void test5(double rdtsc_cost) {
 }
 
 
+void * thread_output(void * arg) {
+    unsigned long args[4] = {1, 2, 3, 4};
+    char * format = "Event A: %d, %d, %d, %d";
+
+    // Enqueue to the ring buffer 2 times
+    for(int i=0; i<2; i++) {
+        bool res = TRACE_EVENT(format, 4, args);
+        assert(res);
+    }
+
+    pthread_exit(NULL);
+    return NULL;
+}
+
+void test6() {
+    printf("Test 6: Testing the output of trace\n");   
+    printf("CPUS Available: %d\n", get_nprocs());
+
+    int num_writers = 4;
+    pthread_t writers[num_writers];
+    int i;
+
+    // Only really need a little data to check
+    trace_init();
+
+    // Create the threads
+    for(int i=0; i < num_writers; i++) {
+        if(pthread_create(&writers[i], NULL, thread_output, &i) != 0) {
+            fprintf(stderr, "Error creating thread %d.\n", i);
+        }
+    }
+
+    // Wait for threads to finish
+    for(i=0; i < num_writers; i++) {
+        if(pthread_join(writers[i], NULL) != 0) {
+            fprintf(stderr, "Error joining thread %d.\n", i);
+        }
+    }
+
+    assert(output_trace());
+        
+    printf("Test 6 Completed\n");
+}
+
 
 
 int main() {  
@@ -296,7 +344,7 @@ int main() {
         printf("RDTSCP Cost: %0.3f\n", rdtsc_cost); 
         printf("----------------------------------------------\n"); 
 
-        char * format = "Event A: %d\n";
+        char * format = "Event A: %d";
         unsigned long args_a[1] = {5};
 
         // 4a. Performance testing - single writer
@@ -318,6 +366,14 @@ int main() {
         printf("----------------------------------------------\n");
 
     }
+    
+    if(TEST_OUTPUT) {
+         // 6. Output test
+        test6();
+        printf("----------------------------------------------\n");
+    }
+
+
    
     printf("Completed Tests\n");
 }

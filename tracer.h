@@ -4,6 +4,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <ck_ring.h>
+#include <pthread.h>
 
 
 // 2^20 buffer size
@@ -21,6 +22,7 @@ struct t_event {
     const char * format;
     uint64_t time_stamp;
     uint64_t cpuid;
+    pthread_t thdid;
     int num_args;
 };
 
@@ -57,6 +59,7 @@ static inline bool trace_event(const char * format, const int num_args, unsigned
     asm volatile("rdtsc": "=a"(low), "=d" (high));
     new_trace.time_stamp = ((uint64_t) high << 32 | low);
     asm volatile("cpuid": "=a"(new_trace.cpuid));
+    new_trace.thdid = pthread_self();
     new_trace.num_args = num_args;
     
     // Add arguments to the trace structure based on event type
@@ -79,6 +82,13 @@ static inline bool output_trace()
     bool ret = true;
     int num_events = ck_ring_size(&trace_buffer.my_ring);
     
+    FILE * fp;
+    fp = fopen("trace_output.csv", "w");
+    if(fp == NULL) {
+        return false;
+    }
+    
+    printf("Num events: %d\n", num_events);
 
     for(int i=0; i < num_events; i++) {
         ret = CK_RING_DEQUEUE_MPSC(trace_buffer, &trace_buffer.my_ring, trace_buffer.traces, &cur_trace);
@@ -86,12 +96,16 @@ static inline bool output_trace()
         if(!ret) {
             return ret;
         } 
-            
-        if(cur_trace.format != NULL) {
-            
+
+        fprintf(fp, "%s,%lu,%lu,%lu,%d", cur_trace.format, cur_trace.time_stamp, cur_trace.cpuid, cur_trace.thdid, cur_trace.num_args);
+
+        for(int j=0; j<cur_trace.num_args; j++) {
+            fprintf(fp, ",%ld", cur_trace.args[j]);
         }
-        
+        fprintf(fp, "\n");
     }
+    fclose(fp);
+
     return ret;
 }
 
