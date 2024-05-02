@@ -1,0 +1,3 @@
+[submodule "ck"]
+	path = ck
+	url = git@github.com:gwsystems/ck.git
