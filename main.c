@@ -10,7 +10,8 @@
 #include "tracer.h"
 
 #define TEST_ENTRY false
-#define TEST_PERFORMANCE true
+#define TEST_PERFORMANCE false
+#define TEST_OUTPUT true
 
 // These are for the entry test
 #define NENTRY 1024
@@ -28,7 +29,7 @@ static inline uint64_t rdtscp(void)
 {
     unsigned int low,high;
     asm volatile("rdtscp": "=a"(low), "=d" (high));
-    return ((uint64_t) high << 32 | low);
+    return ((uint64_t) high << 32 | (uint64_t) low);
 }
 
 // Get the cost of rdtsc, this is done across 1,000,000 trials
@@ -49,99 +50,130 @@ double get_rdtscp_cost() {
     return avg_time;
 }
 
+
 // Test basic enqueue
 void test1() {
-    printf("Test 1: Entering a single event\n");
-    trace_init();
+    printf("Test 1: Dequeue from empty buffer should fail\n");
+
+    TRACE_INIT();
+    trace_event * my_event = DEQUEUE_TRACE();
+    assert(!my_event);
+    printf("Test 2 -- Passed\n");
+}
+
+
+// Test basic enqueue
+void test2() {
+    printf("Test 2: Entering a single event\n");
+    TRACE_INIT();
 
     int i;
     unsigned long args[1] = {5};
-    char * format = "Event A: %d\n";
+    char * format = "Event A: %lu\n";
     
     // Enqueue NENTRY items
     for(i=0; i<NENTRY; i++) {
-        bool res = trace_event(format, 1, args);
+        bool res = ENQUEUE_TRACE(format, 1, args);
         assert(res);
     }
 
     // Dequeue NENTRY items
     for(i=0; i<NENTRY; i++) {
-        bool res = GET_TRACE();
-        assert(res);
-    }
-
-    printf("Test 1 -- Passed\n");
-}
-
-// Enqueue different event types
-void test2() {
-    printf("Test 2: Entering events of different types\n");
-    trace_init();
-    int i;
-    char * format;
-
-    unsigned long args_a[1] = {5};
-    format = "Event A: %d\n";
-    for(i=0; i<NENTRY; i++) {
-        bool res = trace_event(format, 1, args_a);
-        assert(res);
-    }
-
-    
-    unsigned long args_b[2] = {4, 3};
-    format = "Event B: a: %d | b: %d\n";
-    for(i=0; i<NENTRY; i++) {
-        bool res = trace_event(format, 2, args_b);
-        assert(res);
-    }
-
-    for(i=0; i<NENTRY*2; i++) {
-        bool res = GET_TRACE();
-        assert(res);
+        trace_event * my_event = DEQUEUE_TRACE();
+        assert(my_event);
     }
 
     printf("Test 2 -- Passed\n");
 }
 
-// Enqueue over-max events. Overwrite??
+// Enqueue different event types
 void test3() {
-    printf("Test 3: Testing for overwrite\n");
+    printf("Test 3: Entering events of different types\n");
+    TRACE_INIT();
+    int i;
+    char * format;
 
-    // Insert max elements
-    trace_init();
-
-    unsigned long args[1] = {5};
-    char * format = "Event A: %d\n";
-    bool res = false;
-    for(int i=0; i<MAX_EVENTS-1; i++) {
-        bool res = trace_event(format, 1, args);
+    unsigned long args_a[1] = {5};
+    format = "Event A: %lu\n";
+    for(i=0; i<NENTRY; i++) {
+        bool res = ENQUEUE_TRACE(format, 1, args_a);
         assert(res);
     }
 
-    args[0] = 4;
-    // Should return false when you overwrite
-    res = trace_event(format, 1, args);
-    assert(res == false);
+    
+    unsigned long args_b[2] = {4, 3};
+    format = "Event B: a: %lu | b: %lu\n";
+    for(i=0; i<NENTRY; i++) {
+        bool res = ENQUEUE_TRACE(format, 2, args_b);
+        assert(res);
+    }
+
+    for(i=0; i<NENTRY*2; i++) {
+        trace_event * my_event = DEQUEUE_TRACE();
+        assert(my_event);
+    }
 
     printf("Test 3 -- Passed\n");
 }
 
+// Enqueue over-max events. Overwrite??
+void test4() {
+    printf("Test 4: Testing for overwrite\n");
+
+    // Insert max elements
+    TRACE_INIT();
+
+    unsigned long args[1] = {5};
+    char * format = "Event A: %lu\n";
+    bool res = false;
+    for(int i=0; i<MAX_EVENTS-1; i++) {
+        bool res = ENQUEUE_TRACE(format, 1, args);
+        assert(res);
+    }
+
+    args[0] = 4;
+
+    // Should return false when you overwrite
+    res = ENQUEUE_TRACE(format, 1, args);
+    assert(res == false);
+
+    printf("Test 4 -- Passed\n");
+}
+
+
+// Test if dequeue actually store the data in the proper spot
+void test5() {
+    printf("Test 5: Testing if dequeue does store value\n");
+    TRACE_INIT();
+
+    unsigned long args[1] = {5};
+    char * format = "Event A: %lu\n";
+    bool res = ENQUEUE_TRACE(format, 1, args);
+    assert(res);
+    trace_event * my_event = DEQUEUE_TRACE();
+    assert(my_event);
+    assert(my_event->args[0] == args[0]);
+
+    printf("Test 5 -- Passed\n");
+}
+
+
+
 
 // Performance calculation
-void test4(double rdtsc_cost, char * format, int num_args, unsigned long args[]) {
-    printf("Test 4: Performance Test for a single writer with %d arguments\n", num_args);
+void test6(double rdtsc_cost, char * format, int num_args, unsigned long args[]) {
+    printf("Test 6: Performance Test for a single writer with %d arguments\n", num_args);
 
-   
     double avg_time, total_time = 0;
     uint64_t time_start,time_end, time_elapsed;
     int count = 0;
 
     for(int i=0; i < NTRIALS; i++) {
-        trace_init();
+        TRACE_INIT();
         for(int j=0; j<NENQUEUE; j++) {
             time_start = rdtscp();
             // printf("Time start: %ld\n", time_start);
-            bool res = TRACE_EVENT(format, num_args, args);
+            bool res = ENQUEUE_TRACE(format, num_args, args);
             time_end = rdtscp();
             // printf("Time end: %ld\n", time_end);
             assert(res);
@@ -162,7 +194,7 @@ void test4(double rdtsc_cost, char * format, int num_args, unsigned long args[])
     printf("Average time taken: %.3f\n", avg_time);
     printf("Accounting for RDTSCP: %.3f\n", avg_time-rdtsc_cost);
     printf("Count Outliers: %d out of %d\n", count, (NTRIALS*NENQUEUE));
-    printf("Test 4 Completed\n");
+    printf("Test 6 Completed\n");
 }
 
 
@@ -181,12 +213,12 @@ void * thread_trace(void * arg) {
     }
     *avg_time = 0;
 
-    char * format = "Event A: %d\n";
+    char * format = "Event A: %lu, %lu, %lu, %lu\n";
 
     // Enqueue to the ring buffer NENQUEUE times
     for(int i=0; i<NENQUEUE; i++) {
         time_start = rdtscp();
-        bool res = TRACE_EVENT(format, 1, args);
+        bool res = ENQUEUE_TRACE(format, 1, args);
         time_end = rdtscp();
 
         assert(res);
@@ -212,8 +244,8 @@ void * thread_trace(void * arg) {
 
 
 // Performance calculation
-void test5(double rdtsc_cost) {
-    printf("Test 5: Performance Test for multiple writers\n");   
+void test7(double rdtsc_cost) {
+    printf("Test 7: Performance Test for multiple writers\n");   
     printf("CPUS Available: %d\n", get_nprocs());
     
     pthread_t writers[NWRITERS];
@@ -222,8 +254,6 @@ void test5(double rdtsc_cost) {
     double trial_time, avg_time = 0;
 
    
-
-   // Make the threads
     for(i=0; i < NTRIALS; i++) {
         // Seed random number generator so we can induce randomness in multiple writers
         if(!TEST_WORST_CASE) {
@@ -232,12 +262,13 @@ void test5(double rdtsc_cost) {
 
         trial_time = 0;
 
-        trace_init();
+        TRACE_INIT();
 
         // Create the threads
         for(j=0; j < NWRITERS; j++) {
             if(pthread_create(&writers[j], NULL, thread_trace, &j) != 0) {
                 fprintf(stderr, "Error creating thread %d.\n", j);
+                return;
             }
         }
 
@@ -266,8 +297,83 @@ void test5(double rdtsc_cost) {
     printf("Trials: %d | Writers: %d | Enqueue per trial: %d\n", NTRIALS, NWRITERS, NENQUEUE);
     printf("Average time taken: %.3f\n", avg_time);
     printf("Accounting for RDTSCP: %.3f\n", avg_time-rdtsc_cost);
-    printf("Test 5 Completed\n");
+    printf("Test 7 Completed\n");
 
+}
+
+
+
+void * test8_thread_a(void * arg) {
+
+    unsigned long args[3] = {1, 2, 3};
+    char * format = "Event A: %lu, %lu, %lu, %lu\n";
+    bool res = false;
+
+    // Enqueue to the ring buffer twice
+    for(int i=0; i<2; i++) {
+        res = ENQUEUE_TRACE(format, 3, args);
+        assert(res);
+    }
+    
+    return NULL;
+}
+
+
+void * test8_thread_b(void * arg) {
+
+    unsigned long args[6] = {1, 2, 3, 4, 5, 6};
+    char * format = "Event A: %lu, %lu, %lu, %lu\n";
+    bool res = false;
+
+    // Enqueue to the ring buffer twice
+    for(int i=0; i<2; i++) {
+        res = ENQUEUE_TRACE(format, 6, args);
+        assert(res);
+    }
+    
+    return NULL;
+}
+
+
+
+// Test if file print is accurate
+void test8() {
+    printf("Test 8: Test if outputting trace event to csv is accurate\n");
+    int i, num_writers;
+    bool ret;
+    num_writers = 4;
+    pthread_t writers[num_writers];
+
+    TRACE_INIT();
+
+   // Make the threads
+    for(i=0; i < num_writers; i++) {
+        if(i % 2 == 0) {
+            if(pthread_create(&writers[i], NULL, test8_thread_a, NULL) != 0) {
+                fprintf(stderr, "Error creating thread %d.\n", i);
+                return;
+            }
+        } else {
+            if(pthread_create(&writers[i], NULL, test8_thread_b, NULL) != 0) {
+                fprintf(stderr, "Error creating thread %d.\n", i);
+                return;
+            }
+        }
+      
+    }
+    
+    // Wait for threads to finish
+    for(i=0; i < num_writers; i++) {
+        if(pthread_join(writers[i], NULL) != 0) {
+            fprintf(stderr, "Error joining thread %d.\n",i);
+        }
+    }
+
+    ret = OUTPUT_TRACE("test.csv", "w");
+    assert(ret);
+    
+   
+    printf("Test 8 Completed\n");
 }
 
 
@@ -276,16 +382,24 @@ void test5(double rdtsc_cost) {
 int main() {  
     // Tests:
     if(TEST_ENTRY) {
-        // 1. Basic test for entering event and output them
+        // 1. Test dequeue from empty buffer
         test1();
         printf("----------------------------------------------\n");
 
-        // 2. Entering different event types
+        // 2. Basic test for entering event and output them
         test2();
         printf("----------------------------------------------\n");
 
-        // 3. Testing overwrite
+        // 3. Entering different event types
         test3();
+        printf("----------------------------------------------\n");
+
+        // 4. Testing overwrite
+        test4();
+        printf("----------------------------------------------\n");
+
+        // 5. Test if dequeue result in data
+        test5();
         printf("----------------------------------------------\n");
     }
   
@@ -296,27 +410,35 @@ int main() {
         printf("RDTSCP Cost: %0.3f\n", rdtsc_cost); 
         printf("----------------------------------------------\n"); 
 
-        char * format = "Event A: %d\n";
+        char * format = "Event A: %lu\n";
         unsigned long args_a[1] = {5};
 
-        // 4a. Performance testing - single writer
-        test4(rdtsc_cost, format, 1, args_a);
+        // 6a. Performance testing - single writer
+        test6(rdtsc_cost, format, 1, args_a);
         printf("----------------------------------------------\n"); 
         
-          // 4c. Performance testing - 4 args per events
+        // 6c. Performance testing - 4 args per events
         unsigned long args_b[4] = {1, 2, 3, 4};
-        test4(rdtsc_cost, format, 4, args_b);
+        format = "Event B: %lu, %lu, %lu, %lu\n";
+        test6(rdtsc_cost, format, 4, args_b);
         printf("----------------------------------------------\n"); 
 
-        // 4c. Performance testing - 8 args per events
+        // 6c. Performance testing - 8 args per events
         unsigned long args_c[8] = {1, 2, 3, 4, 5, 6, 7, 8};
-        test4(rdtsc_cost, format, 8, args_c);
+        format = "Event C: %lu, %lu, %lu, %lu, %lu, %lu, %lu, %lu\n";
+        test6(rdtsc_cost, format, 8, args_c);
         printf("----------------------------------------------\n"); 
 
-        // 5. Performance testing - multiple writers 
-        test5(rdtsc_cost);
+        // 7. Performance testing - multiple writers 
+        test7(rdtsc_cost);
         printf("----------------------------------------------\n");
 
+    }
+
+    if(TEST_OUTPUT) {
+        // 8. Test if writing to file is accurate
+        test8();
+        printf("----------------------------------------------\n");
     }
    
     printf("Completed Tests\n");
