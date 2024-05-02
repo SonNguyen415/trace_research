@@ -12,6 +12,8 @@
 #define TEST_ENTRY false
 #define TEST_PERFORMANCE false
 #define TEST_OUTPUT true
+#define TEST_PERFORMANCE false
+#define TEST_OUTPUT true
 
 // These are for the entry test
 #define NENTRY 1024
@@ -20,8 +22,11 @@
 #define NWRITERS 8
 #define NENQUEUE 1024
 #define NTRIALS 4096
-#define OUTLIER_THRESHOLD 1024*1024
+#define OUTLIER_THRESHOLD 65536
 #define TEST_WORST_CASE true
+
+// How many data to write for the tracer test
+#define NDATA 64
 
 
 // Read current time stamp
