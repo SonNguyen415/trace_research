@@ -9,10 +9,8 @@
 #define NARGS 8
 #include "tracer.h"
 
-#define TEST_ENTRY false
-#define TEST_PERFORMANCE false
-#define TEST_OUTPUT true
-#define TEST_PERFORMANCE false
+#define TEST_ENTRY true
+#define TEST_PERFORMANCE true
 #define TEST_OUTPUT true
 
 // These are for the entry test
@@ -235,7 +233,7 @@ void * thread_trace(void * arg) {
             usleep(random_number);
         }
         
-        if(time_elapsed > 0) {
+        if(time_elapsed > 0 && time_elapsed < OUTLIER_THRESHOLD) {
             *avg_time += time_elapsed;    
         }
     }
