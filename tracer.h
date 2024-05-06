@@ -47,18 +47,18 @@ static inline bool enqueue_trace(const char * format, const int nargs, unsigned 
         return false;
     }
 
-    // uint32_t low,high,cpuid;
+    uint32_t low,high,cpuid;
     trace_event new_trace;
     bool ret = true;
     
     new_trace.format = format;
-    // asm volatile("rdtscp\n\t" 
-    //             "mov %%ecx, %0\n\t"
-    //             : "=g"(cpuid),"=a"(low), "=d" (high)
-    //             );
-    // new_trace.time_stamp = ((uint64_t) high << 32 | (uint64_t) low);
-    // new_trace.cpuid = cpuid;
-    // new_trace.thd_id = pthread_self();
+    asm volatile("rdtscp\n\t" 
+                "mov %%ecx, %0\n\t"
+                : "=g"(cpuid),"=a"(low), "=d" (high)
+                );
+    new_trace.time_stamp = ((uint64_t) high << 32 | (uint64_t) low);
+    new_trace.cpuid = cpuid;
+    new_trace.thd_id = pthread_self();
     new_trace.nargs = nargs;
     
     // Add arguments to the trace structure based on event type

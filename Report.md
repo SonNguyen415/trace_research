@@ -15,7 +15,7 @@ During this time, I was concerned also with the concurrency kit. Since the kit c
 Much of the tests for correctness was trivial so I won't go into details. I spent much of the time on the performance test. I've decided to discard the acquisition of timestamp, thread id, and core id in my initial analysis as the functions to acquire them is different on Composite, which is the final desired operating system we want to incorporate this in. RDTSCP was used to acquire the timestamps. The tests were ran for 4096 trials, each trial have a writer enqueue 1024 times. The average was taken to compute the final result for each test. The result for such tests is shown below:
 
 
-| Test                        |     Average Cost   |
+| Test                        |    Average Cost    |
 | --------------------------- | ------------------ | 
 | Single Writer - 1 Argument  |    54-60 cycles    | 
 | Single Writer - 4 Arguments |    59-62 cycles    | 
@@ -27,12 +27,12 @@ Much of the tests for correctness was trivial so I won't go into details. I spen
 At this time, I was concerned with the extremely high performance cost of the multiple writers. Discussions with Gabe revealed that it was expected to be high due to high contention and this was the absolute worst case. I decided to implement a randomized wait in between 0 and 4 microseconds between each enqueue for a simple test. The result is shown below:
 
 
-| Test                        |     Average Cost   |
+| Test                        |    Average Cost    |
 | --------------------------- | ------------------ | 
 | 4 Writers - 4 Arguments     |   361-390 cycles   | 
-| 8 Writers - 4 Arguments     |    380-410 cycles  | 
+| 8 Writers - 4 Arguments     |   380-410 cycles   | 
 
-
+Interestingly, the difference between 4 and 8 writers dropped significantly here.
 
 #### Using array as input
 To optimize performance, an idea was conceived to use fall-through switch statements. However, testing showed that there was little to no increase in performance. As such, this idea was dropped.
@@ -40,7 +40,18 @@ To optimize performance, an idea was conceived to use fall-through switch statem
 After this, Gabe conceived the idea of users putting all the arguments into an array whose size is define by a #define. Testing this out found that there were little to no difference in performance. This allowed a shortening of the arguments to 3, providing for a much nicer interface. A for loop was thus employed to iterate through these arguments.
 
 #### Adding timestamps, core id, thread id
+After adding these 3 values, the performance overhead increased:
 
+
+| Test                        |    Average Cost    |
+| --------------------------- | ------------------ | 
+| Single Writer - 1 Argument  |   123-137 cycles   | 
+| Single Writer - 4 Arguments |   150-165 cycles   | 
+| Single Writer - 8 Arguments |   208-224 cycles   | 
+| 4 Writers - 4 Arguments     |   669-697 cycles   | 
+| 8 Writers - 4 Arguments     |  2915-3080 cycles  | 
+
+This is clearly unacceptable and too high, but these are values 
 
 #### Output to csv file
 
