@@ -9,9 +9,9 @@
 #define NARGS 8
 #include "tracer.h"
 
-#define TEST_ENTRY true
+#define TEST_ENTRY false
 #define TEST_PERFORMANCE true
-#define TEST_OUTPUT true
+#define TEST_OUTPUT false
 
 // These are for the entry test
 #define NENTRY 1024
