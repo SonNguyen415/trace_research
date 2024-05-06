@@ -2,7 +2,7 @@
 The goal of this project was to create a new tracing infrastructure that was more dynamic than the one currently used by the Composite Operating System while maintaining low overhead. Thus, the intention is to create a macro that will allow users to call right before any event to log them into a ring buffer. Events can then be outputted into a file to be analyzed later. The stated objetive is to ensure that the aforementioned logger would run at less than 100 cycles.
 
 
-#### Stage 1 -- Union of Structs
+####  Union of Structs
 I initially looked at the ftrace documentations as a reference, but it was much more complex than what we wanted. The strace likewise was more complex than needed, with the desired objective to be a tracer that we can explicitly call in the program, rather than a command to be inputted into the shell.
 
 The first thing I did was, through discussion with Professor Gabe Parmer, create a ring buffer that was an array of events, each event being a union of different event types. This is done so that users can input in different number of arguments, with each event type being simply a struct with different number of arguments. The user can then enqueue into the buffer while specifying the event type as an argument to the tracing function, which will be a predefined flag to the function. 
@@ -15,18 +15,31 @@ During this time, I was concerned also with the concurrency kit. Since the kit c
 Much of the tests for correctness was trivial so I won't go into details. I spent much of the time on the performance test. I've decided to discard the acquisition of timestamp, thread id, and core id in my initial analysis as the functions to acquire them is different on Composite, which is the final desired operating system we want to incorporate this in. RDTSCP was used to acquire the timestamps. The tests were ran for 4096 trials, each trial have a writer enqueue 1024 times. The average was taken to compute the final result for each test. The result for such tests is shown below:
 
 
-| Test                        |   Average Cost   |
-| --------------------------- | ---------------- | 
-| Single Writer - 1 Argument  |   54-60 cycles   | 
-| Single Writer - 4 Arguments |   59-62 cycles   | 
-| Single Writer - 8 Arguments |   67-74 cycles   | 
-| Multiple Writers            | 2700-2850 cycles | 
+| Test                        |     Average Cost   |
+| --------------------------- | ------------------ | 
+| Single Writer - 1 Argument  |    54-60 cycles    | 
+| Single Writer - 4 Arguments |    59-62 cycles    | 
+| Single Writer - 8 Arguments |    67-74 cycles    | 
+| 4 Writers - 4 Arguments     |   590-620 cycles   | 
+| 8 Writers - 4 Arguments     |  2700-2850 cycles  | 
+
+
+At this time, I was concerned with the extremely high performance cost of the multiple writers. Discussions with Gabe revealed that it was expected to be high due to high contention and this was the absolute worst case. I decided to implement a randomized wait in between 0 and 4 microseconds between each enqueue for a simple test. The result is shown below:
+
+
+| Test                        |     Average Cost   |
+| --------------------------- | ------------------ | 
+| 4 Writers - 4 Arguments     |   361-390 cycles   | 
+| 8 Writers - 4 Arguments     |    380-410 cycles  | 
 
 
 
-#### Stage 2 -- Using array as input
+#### Using array as input
+To optimize performance, an idea was conceived to use fall-through switch statements. However, testing showed that there was little to no increase in performance. As such, this idea was dropped.
 
+After this, Gabe conceived the idea of users putting all the arguments into an array whose size is define by a #define. Testing this out found that there were little to no difference in performance. This allowed a shortening of the arguments to 3, providing for a much nicer interface. A for loop was thus employed to iterate through these arguments.
 
+#### Adding timestamps, core id, thread id
 
 
 #### Output to csv file

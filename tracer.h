@@ -10,13 +10,13 @@
 // 2^20 buffer size
 #define MAX_EVENTS 1048576
 
-#ifndef NARGS
-#define NARGS 1 // Default value
+#ifndef TRACE_NARGS
+#define TRACE_NARGS 1 // Default value
 #endif
 
 // Trace structure
 struct t_event {
-    unsigned long args[NARGS];
+    unsigned long args[TRACE_NARGS];
     
     // Some other variables for timestamp and stuff that all events should store    
     const char * format;
@@ -43,7 +43,7 @@ static inline void trace_init()
 
 static inline bool enqueue_trace(const char * format, const int nargs, unsigned long args[]) 
 {
-    if(NARGS < nargs) {
+    if(TRACE_NARGS < nargs) {
         return false;
     }
 

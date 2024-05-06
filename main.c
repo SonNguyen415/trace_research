@@ -6,7 +6,7 @@
 #include <unistd.h>
 #include <time.h>
 
-#define NARGS 8
+#define TRACE_NARGS 8
 #include "tracer.h"
 
 #define TEST_ENTRY false
@@ -17,7 +17,6 @@
 #define NENTRY 1024
 
 // These are for the performance test
-#define NWRITERS 8
 #define NENQUEUE 1024
 #define NTRIALS 4096
 #define OUTLIER_THRESHOLD 65536
@@ -175,10 +174,8 @@ void test6(double rdtsc_cost, char * format, int num_args, unsigned long args[])
         TRACE_INIT();
         for(int j=0; j<NENQUEUE; j++) {
             time_start = rdtscp();
-            // printf("Time start: %ld\n", time_start);
             bool res = ENQUEUE_TRACE(format, num_args, args);
             time_end = rdtscp();
-            // printf("Time end: %ld\n", time_end);
             assert(res);
 
             time_elapsed = time_end-time_start;
@@ -229,7 +226,7 @@ void * thread_trace(void * arg) {
         time_elapsed = time_end - time_start;
 
         if(!TEST_WORST_CASE) {
-            int random_number = rand() % 5;
+            int random_number = rand() % 4;
             usleep(random_number);
         }
         
@@ -247,12 +244,12 @@ void * thread_trace(void * arg) {
 
 
 // Performance calculation
-void test7(double rdtsc_cost) {
-    printf("Test 7: Performance Test for multiple writers\n");   
+void test7(double rdtsc_cost, int nwriters) {
+    printf("Test 7: Performance Test for %d writers\n", nwriters);   
     printf("CPUS Available: %d\n", get_nprocs());
     
-    pthread_t writers[NWRITERS];
-    double th_results[NWRITERS];
+    pthread_t writers[nwriters];
+    double th_results[nwriters];
     int i,j;
     double trial_time, avg_time = 0;
 
@@ -268,7 +265,7 @@ void test7(double rdtsc_cost) {
         TRACE_INIT();
 
         // Create the threads
-        for(j=0; j < NWRITERS; j++) {
+        for(j=0; j < nwriters; j++) {
             if(pthread_create(&writers[j], NULL, thread_trace, &j) != 0) {
                 fprintf(stderr, "Error creating thread %d.\n", j);
                 return;
@@ -276,7 +273,7 @@ void test7(double rdtsc_cost) {
         }
 
         // Wait for threads to finish
-        for(j=0; j < NWRITERS; j++) {
+        for(j=0; j < nwriters; j++) {
             double * thd_result;
             if(pthread_join(writers[j], (void**)&thd_result) != 0) {
                 fprintf(stderr, "Error joining thread %d.\n", j);
@@ -286,18 +283,18 @@ void test7(double rdtsc_cost) {
         }
         
         // Aggregate average value
-        for(j=0; j < NWRITERS; j++) {
+        for(j=0; j < nwriters; j++) {
             trial_time += th_results[j];
         }
 
-        trial_time = trial_time / NWRITERS;
+        trial_time = trial_time / nwriters;
         avg_time += trial_time;
     }
 
    
     avg_time = avg_time / NTRIALS;
     
-    printf("Trials: %d | Writers: %d | Enqueue per trial: %d\n", NTRIALS, NWRITERS, NENQUEUE);
+    printf("Trials: %d | Writers: %d | Enqueue per trial: %d\n", NTRIALS, nwriters, NENQUEUE);
     printf("Average time taken: %.3f\n", avg_time);
     printf("Accounting for RDTSCP: %.3f\n", avg_time-rdtsc_cost);
     printf("Test 7 Completed\n");
@@ -342,15 +339,15 @@ void * test8_thread_b(void * arg) {
 // Test if file print is accurate
 void test8() {
     printf("Test 8: Test if outputting trace event to csv is accurate\n");
-    int i, num_writers;
+    int i, nwriters;
     bool ret;
-    num_writers = 4;
-    pthread_t writers[num_writers];
+    nwriters = 4;
+    pthread_t writers[nwriters];
 
     TRACE_INIT();
 
    // Make the threads
-    for(i=0; i < num_writers; i++) {
+    for(i=0; i < nwriters; i++) {
         if(i % 2 == 0) {
             if(pthread_create(&writers[i], NULL, test8_thread_a, NULL) != 0) {
                 fprintf(stderr, "Error creating thread %d.\n", i);
@@ -366,7 +363,7 @@ void test8() {
     }
     
     // Wait for threads to finish
-    for(i=0; i < num_writers; i++) {
+    for(i=0; i < nwriters; i++) {
         if(pthread_join(writers[i], NULL) != 0) {
             fprintf(stderr, "Error joining thread %d.\n",i);
         }
@@ -432,8 +429,12 @@ int main() {
         test6(rdtsc_cost, format, 8, args_c);
         printf("----------------------------------------------\n"); 
 
-        // 7. Performance testing - multiple writers 
-        test7(rdtsc_cost);
+        // 7a. Performance testing - 4 writers 
+        test7(rdtsc_cost, 4);
+        printf("----------------------------------------------\n");
+
+        // 7b. Performance testing - 8 writers 
+        test7(rdtsc_cost, 8);
         printf("----------------------------------------------\n");
 
     }
