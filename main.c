@@ -162,13 +162,18 @@ void test5() {
 
 
 
-// Performance calculation
-void test6(double rdtsc_cost, char * format, int num_args, unsigned long args[]) {
-    printf("Test 6: Performance Test for a single writer with %d arguments\n", num_args);
+// Performance calculation for single writer
+void test6_7(int test, double rdtsc_cost, char * format, int num_args, unsigned long args[]) {
+    printf("Test %d: Performance Test for a single writer with %d arguments\n", test, num_args);
+    if(test == 7) {
+        printf("    Reading while writing\n");
+    }
 
     double avg_time, total_time = 0;
     uint64_t time_start,time_end, time_elapsed;
-    int count = 0;
+    int count = 0; 
+
+    remove("test7.csv");
 
     for(int i=0; i < NTRIALS; i++) {
         TRACE_INIT();
@@ -179,6 +184,10 @@ void test6(double rdtsc_cost, char * format, int num_args, unsigned long args[])
             assert(res);
 
             time_elapsed = time_end-time_start;
+
+            if(test == 7) {
+                APPEND_TRACE("test7.csv");
+            }
 
             if(time_elapsed > OUTLIER_THRESHOLD) {
                 count++;
@@ -194,7 +203,7 @@ void test6(double rdtsc_cost, char * format, int num_args, unsigned long args[])
     printf("Average time taken: %.3f\n", avg_time);
     printf("Accounting for RDTSCP: %.3f\n", avg_time-rdtsc_cost);
     printf("Count Outliers: %d out of %d\n", count, (NTRIALS*NENQUEUE));
-    printf("Test 6 Completed\n");
+    printf("Test %d Completed\n", test);
 }
 
 
@@ -243,9 +252,12 @@ void * thread_trace(void * arg) {
 }
 
 
-// Performance calculation
-void test7(double rdtsc_cost, int nwriters) {
-    printf("Test 7: Performance Test for %d writers\n", nwriters);   
+// Performance calculation for nwriters
+void test8_9(int test, double rdtsc_cost, int nwriters) {
+    printf("Test %d: Performance Test for %d writers\n", test, nwriters);   
+    if(test == 9) {
+        printf("    Reading while writing\n");
+    }
     printf("CPUS Available: %d\n", get_nprocs());
     
     pthread_t writers[nwriters];
@@ -253,7 +265,9 @@ void test7(double rdtsc_cost, int nwriters) {
     int i,j;
     double trial_time, avg_time = 0;
 
-   
+    
+    remove("test9.csv");
+
     for(i=0; i < NTRIALS; i++) {
         // Seed random number generator so we can induce randomness in multiple writers
         if(!TEST_WORST_CASE) {
@@ -270,6 +284,10 @@ void test7(double rdtsc_cost, int nwriters) {
                 fprintf(stderr, "Error creating thread %d.\n", j);
                 return;
             }
+        }
+
+        if(test == 9) {
+            APPEND_TRACE("test9.csv");
         }
 
         // Wait for threads to finish
@@ -297,13 +315,12 @@ void test7(double rdtsc_cost, int nwriters) {
     printf("Trials: %d | Writers: %d | Enqueue per trial: %d\n", NTRIALS, nwriters, NENQUEUE);
     printf("Average time taken: %.3f\n", avg_time);
     printf("Accounting for RDTSCP: %.3f\n", avg_time-rdtsc_cost);
-    printf("Test 7 Completed\n");
+    printf("Test %d Completed\n", test);
 
 }
 
 
-
-void * test8_thread_a(void * arg) {
+void * test10_thread_a(void * arg) {
 
     unsigned long args[3] = {1, 2, 3};
     char * format = "Event A: %lu, %lu, %lu, %lu\n";
@@ -319,10 +336,10 @@ void * test8_thread_a(void * arg) {
 }
 
 
-void * test8_thread_b(void * arg) {
+void * test10_thread_b(void * arg) {
 
     unsigned long args[6] = {1, 2, 3, 4, 5, 6};
-    char * format = "Event A: %lu, %lu, %lu, %lu\n";
+    char * format = "Event A: %lu, %lu, %lu, %lu, %lu, %lu\n";
     bool res = false;
 
     // Enqueue to the ring buffer twice
@@ -335,10 +352,9 @@ void * test8_thread_b(void * arg) {
 }
 
 
-
 // Test if file print is accurate
-void test8() {
-    printf("Test 8: Test if outputting trace event to csv is accurate\n");
+void test10() {
+    printf("Test 10: Test if outputting trace event to csv is accurate\n");
     int i, nwriters;
     bool ret;
     nwriters = 4;
@@ -349,12 +365,12 @@ void test8() {
    // Make the threads
     for(i=0; i < nwriters; i++) {
         if(i % 2 == 0) {
-            if(pthread_create(&writers[i], NULL, test8_thread_a, NULL) != 0) {
+            if(pthread_create(&writers[i], NULL, test10_thread_a, NULL) != 0) {
                 fprintf(stderr, "Error creating thread %d.\n", i);
                 return;
             }
         } else {
-            if(pthread_create(&writers[i], NULL, test8_thread_b, NULL) != 0) {
+            if(pthread_create(&writers[i], NULL, test10_thread_b, NULL) != 0) {
                 fprintf(stderr, "Error creating thread %d.\n", i);
                 return;
             }
@@ -369,13 +385,12 @@ void test8() {
         }
     }
 
-    ret = OUTPUT_TRACE("test.csv", "w");
+    ret = OUTPUT_TRACE("test10.csv");
     assert(ret);
     
    
-    printf("Test 8 Completed\n");
+    printf("Test 10 Completed\n");
 }
-
 
 
 
@@ -414,34 +429,56 @@ int main() {
         unsigned long args_a[1] = {5};
 
         // 6a. Performance testing - single writer
-        test6(rdtsc_cost, format, 1, args_a);
+        test6_7(6, rdtsc_cost, format, 1, args_a);
         printf("----------------------------------------------\n"); 
         
         // 6c. Performance testing - 4 args per events
         unsigned long args_b[4] = {1, 2, 3, 4};
         format = "Event B: %lu, %lu, %lu, %lu\n";
-        test6(rdtsc_cost, format, 4, args_b);
+        test6_7(6, rdtsc_cost, format, 4, args_b);
         printf("----------------------------------------------\n"); 
+        
 
         // 6c. Performance testing - 8 args per events
         unsigned long args_c[8] = {1, 2, 3, 4, 5, 6, 7, 8};
         format = "Event C: %lu, %lu, %lu, %lu, %lu, %lu, %lu, %lu\n";
-        test6(rdtsc_cost, format, 8, args_c);
+        test6_7(6, rdtsc_cost, format, 8, args_c);
         printf("----------------------------------------------\n"); 
 
-        // 7a. Performance testing - 4 writers 
-        test7(rdtsc_cost, 4);
+       // 7a. Test reading while writing
+        test6_7(7, rdtsc_cost, format, 1, args_a);
+        printf("----------------------------------------------\n"); 
+
+        // 7b. Test reading while writing
+        test6_7(7, rdtsc_cost, format, 4, args_b);
+        printf("----------------------------------------------\n"); 
+
+        // 7c. Test reading while writing
+        test6_7(7, rdtsc_cost, format, 8, args_c);
+        printf("----------------------------------------------\n"); 
+
+        // 8a. Performance testing - 4 writers 
+        test8_9(8, rdtsc_cost, 4);
         printf("----------------------------------------------\n");
 
-        // 7b. Performance testing - 8 writers 
-        test7(rdtsc_cost, 8);
+        // 8b. Performance testing - 8 writers 
+        test8_9(8, rdtsc_cost, 8);
+        printf("----------------------------------------------\n");
+
+        
+        // 9. Performance testing - 4 writers writing while reading
+        test8_9(9, rdtsc_cost, 4);
+        printf("----------------------------------------------\n");
+
+          // 9. Performance testing - 8 writers writing while reading
+        test8_9(9, rdtsc_cost, 8);
         printf("----------------------------------------------\n");
 
     }
 
     if(TEST_OUTPUT) {
-        // 8. Test if writing to file is accurate
-        test8();
+        // 10. Test if writing to file is accurate
+        test10();
         printf("----------------------------------------------\n");
     }
    

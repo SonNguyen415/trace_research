@@ -141,12 +141,18 @@ static inline bool output_trace(char * file_name, char * mode)
 #define DEQUEUE_TRACE() dequeue_trace()
 
 
-/* Start from current write ptr, we read and dequeue the entire buffer into a csv.
+/* Read and dequeue the entire trace buffer into a csv
  * CSV file is formatted as Timestamp, Core ID, Thread ID, Number of Arguments, and followed by the arguments.
- * @param file_name the csv file name that we want to write top
+ * @param file_name the csv file name that we want to write to
  * @return true on success, false otherwise
  */ 
-#define OUTPUT_TRACE(file_name, mode) output_trace(file_name, mode)
+#define OUTPUT_TRACE(file_name) output_trace(file_name, "w")
 
+/* Read and dequeue the entire trace buffer and append it to a csv
+ * CSV file is formatted as Timestamp, Core ID, Thread ID, Number of Arguments, and followed by the arguments.
+ * @param file_name the csv file name that we want to append to
+ * @return true on success, false otherwise
+ */ 
+#define APPEND_TRACE(file_name) output_trace(file_name, "a")
 
 #endif

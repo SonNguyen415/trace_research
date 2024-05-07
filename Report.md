@@ -9,7 +9,7 @@ The first thing I did was, through discussion with Professor Gabe Parmer, create
 
 As a result of this way of doing things, the interface was extremely complex with up to 12 arguments, 2 for the string format to be outputted and the event type flag, and 10 for the arguments, with each argument that's not needed still requires the user to input a value. As a result, I decided to experiment on utilizing it as a variadic function. There was concern about the possible drop in performance and the fact that when the user have lots of arguments the function call would still have a crap ton of arguments. This idea was never seriously pursued, as a nicer idea was conceived later.
 
-During this time, I was concerned also with the concurrency kit. Since the kit can only enqueue and dequeue into the ring buffer, and we might want to add in data, it means that new data will have to be dropped when the ring buffer is full before the user dequeue from the ring buffer. I considered adding an additional check that will dequeue the buffer when the ring is full, but doing so would cost so much in performance that I deemed it useless and the user might as well just explicitly call output. Another idea I had was to just halt the process and drop a warning to the user to give the option of outputting all current data, but this was never pursued.
+During this time, I was concerned also with the concurrency kit. Since the kit can only enqueue and dequeue into the ring buffer, and we might want to add in data, it means that new data will have to be dropped when the ring buffer is full before the user dequeue from the ring buffer. I entertainted the idea of adding an additional check that will dequeue the buffer when the ring is full, but doing so would cost so much in performance when they want to enqueue that I deemed it useless and the user might as well just explicitly dequeue the buffer. Another idea I had was to just halt the process and drop a warning to the user to give the option of outputting all current data, but I decided that it'll be a problem for posterity.
 
 ### Testing
 Much of the tests for correctness was trivial so I won't go into details. I spent much of the time on the performance test. I've decided to discard the acquisition of timestamp, thread id, and core id in my initial analysis as the functions to acquire them is different on Composite, which is the final desired operating system we want to incorporate this in. RDTSCP was used to acquire the timestamps. The tests were ran for 4096 trials, each trial have a writer enqueue 1024 times. The average was taken to compute the final result for each test. The result for such tests is shown below:
@@ -50,12 +50,18 @@ After adding these 3 values, the performance overhead increased. At the time, I 
 | 4 Writers - 4 Arguments     |   669-697 cycles   |            913-923 cycles          |
 | 8 Writers - 4 Arguments     |  2915-3080 cycles  |            1837-1860 cycles        |
 
-As can be observed, the average cost dropped significantly for all cases except for 4 writers with 4 arguments. The average cost for a single writer dropped down to up to 110 cycles, which is around the desired performance. I decided to stop here because the composite functions to acquire these data are different and the performance would be different.
- 
+As can be observed, the average cost dropped significantly for all cases except for 4 writers with 4 arguments. The average cost for a single writer dropped down to up to 110 cycles, which is around the desired performance. I decided to stop here because the composite functions to acquire these data are different and the performance would be different. Note the limitation of this comparison, as these are still 2 different laptops.
 
 ### Output to csv file
+The output to the csv file involves writing the various arguments and data into the csv file. Unfortunately, ck ring does not provide a peeking ability, so one cannot read the buffer without dequeuing. In any case, the data was added in. I was curious on how a concurrent writer may affect the performance of the reader. Applying the test for reading right after writing, we have:
 
-
+| Test                        | Average Cost (WSL) | Average Cost (WSL while Writing)   |
+| --------------------------- | ------------------ | ---------------------------------- |
+| Single Writer - 1 Argument  |   123-137 cycles   |             151 cycles             |
+| Single Writer - 4 Arguments |   150-165 cycles   |             86-88 cycles           |
+| Single Writer - 8 Arguments |   208-224 cycles   |            100-103 cycles          |
+| 4 Writers - 4 Arguments     |   669-697 cycles   |            913-923 cycles          |
+| 8 Writers - 4 Arguments     |  2915-3080 cycles  |            1837-1860 cycles        |
 
 
 ### Current State
