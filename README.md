@@ -39,20 +39,20 @@ To optimize performance, an idea was conceived to use fall-through switch statem
 
 After this, Gabe conceived the idea of users putting all the arguments into an array whose size is define by a #define. Tests demonstrated that there were little to no difference in performance. However, this allowed a shortening of the arguments to 3, providing for a much nicer interface. A for loop was thus employed to iterate through these arguments. Static inline compiler magic means that the for loop would not be branching.
 
-However, this does means that I'm adding a checker to ensure that the nargs argument is not higher than the NARGS constant that defines the array size so that weird stuff aren't happening.
+However, this does means that I'm adding a checker to ensure that the nargs argument is not higher than the NARGS constant that defines the array size so that weird stuff aren't happening. This seems to not incur much additional overhead though, so we're good.
 
 ### Adding timestamps, core id, thread id
 After adding these 3 values, the performance overhead increased. At the time, I was confused and used cpuid to get the core id. This clearly resulted in an extremely high overhead. However, this made me suspicious of the limitations of wsl, and so I attemted to run my code on a native linux computer. Thus, my findings are shown below (after adjusting to use RDSTSCP to acquire the core id instead): 
 
-| Test                        | Average Cost (WSL) | Average Cost (Linux Laptop) |
+| Test                        | Average Cost (WSL) | Average Cost (Linux Computer) |
 | --------------------------- | ------------------ | ---------------------------------- |
 | Single Writer - 1 Argument  |   119-125 cycles   |            80-85 cycles            |
 | Single Writer - 4 Arguments |   129-136 cycles   |            86-98 cycles            |
-| Single Writer - 8 Arguments |   146-152 cycles   |           100-103 cycles           |
+| Single Writer - 8 Arguments |   146-152 cycles   |           100-104 cycles           |
 | 4 Writers - 4 Arguments     |   679-724 cycles   |           913-923 cycles           |
 | 8 Writers - 4 Arguments     |  2960-3100 cycles  |           1837-1860 cycles         |
 
-As can be observed, the average cost dropped significantly for all cases except for 4 writers with 4 arguments. The average cost for a single writer dropped down to up to 110 cycles, which is around the desired performance. I decided to stop here because the composite functions to acquire these data are different and the performance would be different. Note the limitation of this comparison, as these are still 2 different laptops.f
+As can be observed, the average cost dropped significantly for all cases except for 4 writers with 4 arguments. The average cost for a single writer dropped down to up to 104 cycles, which is around the desired performance. I decided to stop here because the composite functions to acquire these data are different and the performance would be different. Note the limitation of this comparison, as these are still different computers. To confirm once again, I ran the tests again on a different computer, which provides similar results as the previous linux computer, which leaves me convinced for now. 
 
 ### Output to csv file
 The output to the csv file involves writing the various arguments and data into the csv file. Unfortunately, ck ring does not provide a peeking ability, so one cannot read the buffer without dequeuing. 
@@ -73,11 +73,49 @@ I was curious on how a concurrent writer may affect the performance of the reade
 The data showcases that there is significant overhead to the tracers when another thread is reading from the buffer. This is expected, but makes me sad.
 
 ### Current State
+#### API Descriptions
+The current tracer library, which can be found in tracer.h, support the following macros:
+
+```c
+// Initializer for the ck ring
+TRACE_INIT()
+
+/* Add an event to the trace buffer
+ * @param format the string that the data will be written into when dequeued
+ * @param nargs the number of arguments to the event, specifying the length of args
+ * @param args the array containing the arguments to be inserted into format
+ * @return true on success, false otherwise
+ */ 
+ENQUEUE_TRACE(format, nargs, args)
+
+// Read the buffer, but do not output to file, only dequeue 
+// @return a pointer trace_event * to the event that has just been dequeued
+DEQUEUE_TRACE() dequeue_trace()
+
+
+/* Read and dequeue the entire trace buffer into a csv, overwriting said CSV
+ * CSV file is formatted as Timestamp, Core ID, Thread ID, Number of Arguments, and followed by the arguments.
+ * @param file_name the csv file name that we want to write to
+ * @return true on success, false otherwise
+ */ 
+OUTPUT_TRACE(file_name)
+
+/* Read and dequeue the entire trace buffer and append it to a csv
+ * CSV file is formatted as Timestamp, Core ID, Thread ID, Number of Arguments, and followed by the arguments.
+ * @param file_name the csv file name that we want to append to
+ * @return true on success, false otherwise
+ */ 
+APPEND_TRACE(file_name) 
+```
+
+The initializer need to be called only once and will reset the trace buffer. 
+
+
 #### Data
 
 Here's a single table for the final stuff:
 
-| Test                        | Average Cost (WSL) | Average Cost (Linux Laptop) | Average Cost (WSL while Writing)   |
+| Test                        | Average Cost (WSL) | Average Cost (Linux Computer)      | Average Cost (WSL while Writing)   |
 | --------------------------- | ------------------ | ---------------------------------- | ---------------------------------- |
 | Single Writer - 1 Argument  |   118-125 cycles   |            80-85 cycles            |          150-165 cycles            |
 | Single Writer - 4 Arguments |   129-136 cycles   |            86-98 cycles            |          164-173 cycles            |
