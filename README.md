@@ -90,7 +90,7 @@ ENQUEUE_TRACE(format, nargs, args)
 
 // Read the buffer, but do not output to file, only dequeue 
 // @return a pointer trace_event * to the event that has just been dequeued
-DEQUEUE_TRACE() dequeue_trace()
+DEQUEUE_TRACE() 
 
 
 /* Read and dequeue the entire trace buffer into a csv, overwriting said CSV
@@ -135,4 +135,9 @@ With 0-4 microseconds random wait in between each trace:
 #### Conclusion
 The data shows that we've largely achieved the objective for single writer, but the average cost for a worst case scenario is extremely high. Since this is very unlikely, the average use case of this should be ok. The cost of the tracing seems to reach the targetted point when running on linux when it's inputted with 8 arguments, so I'd blame WSL for the overhead of translating linux system calls onto my windows machine. Indeed, much of the additional cost comes from reading the timestamp (which cost ~50 cycles alone on wsl, and ~25 cycles on linux). As Gabe claimed that obtaining timestamp should be very fast on composite, I decided to not worry too much about that part. 
 
+There remains a concern about the concurrency kit, which will return error to tracers that enqueue into a full ring buffer. Currently, this means that newer data will be dropped when the ring buffer is full.
+
 Although the multi-threading performance is worryingly high, on average it still seems to perform ok. The main additional change of this API from current implementation (the use of the array to allow for dynamic number of arguments) seems to not incur much in additional cost, so therefore this is cool and Gabe should totally use it.
+
+
+
