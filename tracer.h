@@ -49,7 +49,7 @@ static inline bool enqueue_trace(const char * format, const int nargs, unsigned 
 
     uint32_t low,high,cpuid;
     trace_event new_trace;
-    bool ret = true;
+    bool ret;
     
     new_trace.format = format;
     asm volatile("rdtscp\n\t" 
@@ -61,7 +61,7 @@ static inline bool enqueue_trace(const char * format, const int nargs, unsigned 
     new_trace.thd_id = pthread_self();
     new_trace.nargs = nargs;
     
-    // Add arguments to the trace structure based on event type
+    // Add arguments to the trace structure
     for(int i=0; i<nargs; i++) {
         new_trace.args[i] = args[i];
     }
@@ -76,11 +76,11 @@ static inline bool enqueue_trace(const char * format, const int nargs, unsigned 
 static inline trace_event * dequeue_trace() 
 {
     trace_event new_trace;
-    trace_event * cur_trace = &new_trace;
+    trace_event * trace_ptr = &new_trace;
 
     bool ret = CK_RING_DEQUEUE_MPSC(trace_buffer, &trace_buffer.my_ring, trace_buffer.traces, &new_trace);
     if(ret) {
-        return cur_trace;
+        return trace_ptr;
     }
 
     return NULL;
@@ -126,7 +126,7 @@ static inline bool output_trace(char * file_name, char * mode)
 #define TRACE_INIT() trace_init()
 
 
-/* Test function to add an event to the trace buffer
+/* Add an event to the trace buffer
  * @param format the string that the data will be written into when dequeued
  * @param nargs the number of arguments to the event, specifying the length of args
  * @param args the array containing the arguments to be inserted into format
@@ -141,7 +141,7 @@ static inline bool output_trace(char * file_name, char * mode)
 #define DEQUEUE_TRACE() dequeue_trace()
 
 
-/* Read and dequeue the entire trace buffer into a csv
+/* Read and dequeue the entire trace buffer into a csv, overwriting said CSV
  * CSV file is formatted as Timestamp, Core ID, Thread ID, Number of Arguments, and followed by the arguments.
  * @param file_name the csv file name that we want to write to
  * @return true on success, false otherwise
