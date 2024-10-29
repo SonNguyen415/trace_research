@@ -226,8 +226,6 @@ struct thd_data
     int outliers;
 };
 
-pthread_mutex_t fastmutex = PTHREAD_MUTEX_INITIALIZER;
-
 void *thread_trace(void *arg)
 {
     struct thd_data *data = (struct thd_data *)arg;
@@ -252,8 +250,6 @@ void *thread_trace(void *arg)
             usleep(random_number);
         }
 
-        pthread_mutex_lock(&fastmutex);
-
         if (time_elapsed > 0 && time_elapsed < MULTI_OUTLIER_THRESHOLD)
         {
             data->avg_time += time_elapsed;
@@ -262,7 +258,6 @@ void *thread_trace(void *arg)
         {
             data->outliers++;
         }
-        pthread_mutex_unlock(&fastmutex);
     }
 
     data->avg_time = data->avg_time / (NENQUEUE - data->outliers);
@@ -351,8 +346,6 @@ void test8_9(int test, double rdtsc_cost, int nwriters)
     }
 
     avg_time = avg_time / NTRIALS;
-    if (pthread_mutex_destroy(&fastmutex) < 0)
-        printf("Mutex could not be destroyed\n");
 
     printf("Trials: %d | Writers: %d | Enqueue per trial: %d\n", NTRIALS, nwriters, NENQUEUE);
     printf("Average time taken: %.3f\n", avg_time);
